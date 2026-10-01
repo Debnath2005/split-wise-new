@@ -22,11 +22,11 @@ export function ListRow({ leading, title, subtitle, trailing, to, onClick }: Lis
     <>
       {leading}
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2 truncate text-2xl/tight font-semibold">
+        <span className="flex items-center gap-2 truncate text-xl/tight font-semibold">
           {title}
         </span>
         {subtitle && (
-          <span className="block truncate text-lg/snug text-chalk-muted">{subtitle}</span>
+          <span className="block truncate text-base/snug text-chalk-muted">{subtitle}</span>
         )}
       </span>
       {trailing}

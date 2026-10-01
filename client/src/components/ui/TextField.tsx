@@ -46,7 +46,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
     <div className={cx('flex flex-col gap-1.5', className)}>
       <label
         htmlFor={id}
-        className={cx('text-lg font-medium tracking-[0.02em]', hideLabel && 'sr-only')}
+        className={cx('text-base font-medium tracking-[0.02em]', hideLabel && 'sr-only')}
       >
         {label}
       </label>
@@ -56,7 +56,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
             aria-hidden
             className={cx(
               'pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-chalk-muted',
-              size === 'lg' ? 'text-2xl' : 'text-base',
+              size === 'lg' ? 'text-xl' : 'text-sm',
             )}
           >
             {prefix}
@@ -70,8 +70,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy || undefined}
           className={cx(
-            'min-h-11 w-full rounded-control border bg-board-sunken px-3 text-xl text-chalk placeholder:text-chalk-muted/60',
-            size === 'lg' && 'money min-h-14 text-2xl font-semibold',
+            'min-h-11 w-full rounded-control border bg-board-sunken px-3 text-lg text-chalk placeholder:text-chalk-muted/60',
+            size === 'lg' && 'money min-h-14 text-xl font-semibold',
             prefix && (size === 'lg' ? 'pl-9' : 'pl-7'),
             suffix && 'pr-8',
             error ? 'border-danger' : 'border-line-strong',
@@ -94,19 +94,19 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
             onClick={() => setRevealed((r) => !r)}
             aria-pressed={revealed}
             aria-label={revealed ? 'Hide password' : 'Show password'}
-            className="absolute inset-y-0 right-0 min-w-14 rounded-r-control px-3 text-lg font-semibold text-accent"
+            className="absolute inset-y-0 right-0 min-w-14 rounded-r-control px-3 text-base font-semibold text-accent"
           >
             {revealed ? 'Hide' : 'Show'}
           </button>
         )}
       </div>
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-lg text-chalk-muted">
+        <p id={`${id}-hint`} className="text-base text-chalk-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-lg text-danger">
+        <p id={`${id}-error`} role="alert" className="text-base text-danger">
           {error}
         </p>
       )}

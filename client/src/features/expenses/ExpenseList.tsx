@@ -27,8 +27,8 @@ function DateBadge({ iso }: { iso: string }) {
       aria-hidden
       className="flex w-10 shrink-0 flex-col items-center leading-tight text-chalk-muted"
     >
-      <span className="text-base uppercase">{month}</span>
-      <span className="text-xl font-semibold text-chalk">{day}</span>
+      <span className="text-sm uppercase">{month}</span>
+      <span className="text-lg font-semibold text-chalk">{day}</span>
     </span>
   );
 }
@@ -85,7 +85,7 @@ export function ExpenseList({ query, meId, showGroup = false, emptyText }: Expen
               subtitle={`${e.method === 'upi' ? 'UPI' : e.method === 'cash' ? 'Cash' : 'Payment'}${where(e.group)}`}
               trailing={
                 <span
-                  className={`flex shrink-0 flex-col items-end text-right text-lg leading-tight ${
+                  className={`flex shrink-0 flex-col items-end text-right text-base leading-tight ${
                     e.to.id === meId
                       ? 'text-positive'
                       : e.from.id === meId

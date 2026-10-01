@@ -30,8 +30,8 @@ export function EmptyState({
   return (
     <div className="animate-chalk-in flex flex-col items-center rounded-card border-[1.5px] border-dashed border-line-strong px-6 py-10 text-center">
       <span className="mb-3 text-accent">{icon ?? <ChalkDoodle />}</span>
-      <h2 className="text-3xl/tight font-bold">{title}</h2>
-      {children && <div className="mt-2 text-lg text-chalk-muted">{children}</div>}
+      <h2 className="text-2xl/tight font-bold">{title}</h2>
+      {children && <div className="mt-2 text-base text-chalk-muted">{children}</div>}
     </div>
   );
 }

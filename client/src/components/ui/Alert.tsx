@@ -11,7 +11,7 @@ export function Alert({ tone, children }: { tone: keyof typeof tones; children: 
     <div
       role={tone === 'error' ? 'alert' : 'status'}
       className={cx(
-        'rounded-control border-[1.5px] border-dashed px-3 py-2.5 text-lg',
+        'rounded-control border-[1.5px] border-dashed px-3 py-2.5 text-base',
         tones[tone],
       )}
     >

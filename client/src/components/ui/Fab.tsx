@@ -10,7 +10,7 @@ export function Fab({ onClick, children }: { onClick: () => void; children: Reac
     <button
       type="button"
       onClick={onClick}
-      className="chalk-press fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[100] inline-flex min-h-14 items-center gap-2 rounded-full border-[1.5px] border-accent bg-accent px-5 text-2xl font-semibold text-slate shadow-overlay hover:bg-accent-strong md:right-8 md:bottom-8"
+      className="chalk-press fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[100] inline-flex min-h-14 items-center gap-2 rounded-full border-[1.5px] border-accent bg-accent px-5 text-xl font-semibold text-slate shadow-overlay hover:bg-accent-strong md:right-8 md:bottom-8"
     >
       <PlusIcon />
       {children}

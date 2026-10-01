@@ -259,14 +259,14 @@ function AddExpenseForm({
         onChange={(e) => setGroupId(e.target.value ? Number(e.target.value) : null)}
       />
       {editing && (
-        <p className="-mt-3 text-lg text-chalk-muted">
+        <p className="-mt-3 text-base text-chalk-muted">
           An expense's group can't be changed. To move it, delete it and add it again.
         </p>
       )}
 
       {!groupId && (
         <fieldset>
-          <legend className="mb-1 text-lg font-semibold">Friends in this expense</legend>
+          <legend className="mb-1 text-base font-semibold">Friends in this expense</legend>
           {friends.data?.length ? (
             friends.data.map((f) => (
               <Checkbox
@@ -286,7 +286,7 @@ function AddExpenseForm({
               </Checkbox>
             ))
           ) : (
-            <p className="text-lg text-chalk-muted">
+            <p className="text-base text-chalk-muted">
               {friends.isPending ? 'Loading friends…' : 'Add a friend first to split with them.'}
             </p>
           )}
@@ -331,7 +331,7 @@ function AddExpenseForm({
       </div>
 
       <fieldset>
-        <legend className="mb-1 text-lg font-semibold">
+        <legend className="mb-1 text-base font-semibold">
           {splitType === 'equal'
             ? 'Split between'
             : splitType === 'exact'
@@ -339,7 +339,7 @@ function AddExpenseForm({
               : 'Percent per person'}
         </legend>
         {pool.length === 0 && (
-          <p className="text-lg text-chalk-muted">
+          <p className="text-base text-chalk-muted">
             {groupId ? 'Loading members…' : 'Pick at least one friend above.'}
           </p>
         )}
@@ -377,7 +377,7 @@ function AddExpenseForm({
                 <span className="min-w-0 flex-1 pt-2.5">
                   <span className="block truncate">{name}</span>
                   {splitType === 'percent' && share !== undefined && (
-                    <Money paise={share} className="block text-lg text-chalk-muted" />
+                    <Money paise={share} className="block text-base text-chalk-muted" />
                   )}
                 </span>
                 <div className="w-32 shrink-0">
@@ -427,7 +427,7 @@ function AddExpenseForm({
         <p
           aria-live="polite"
           className={cx(
-            'text-lg font-semibold',
+            'text-base font-semibold',
             status.tone === 'ok' && 'text-positive',
             status.tone === 'warn' && 'text-yellow',
             status.tone === 'muted' && 'text-chalk-muted',

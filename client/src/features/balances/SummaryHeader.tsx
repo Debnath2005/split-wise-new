@@ -9,13 +9,13 @@ export function SummaryHeader() {
 
   const cell = (label: string, paise: number | undefined, tone: string) => (
     <div className="flex flex-col">
-      <span className="text-lg text-chalk-muted">{label}</span>
+      <span className="text-base text-chalk-muted">{label}</span>
       {paise === undefined ? (
         <Skeleton className="mt-1 h-7 w-24" />
       ) : (
         <Money
           paise={paise}
-          className={`text-2xl font-semibold ${paise === 0 ? 'text-chalk-muted' : tone}`}
+          className={`text-xl font-semibold ${paise === 0 ? 'text-chalk-muted' : tone}`}
         />
       )}
     </div>

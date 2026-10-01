@@ -45,11 +45,11 @@ export function GroupDetailPage() {
       <BackLink to="/groups">Groups</BackLink>
       <header className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-5xl/tight font-bold tracking-[-0.01em] break-words">{name}</h1>
+          <h1 className="text-4xl/tight font-bold tracking-[-0.01em] break-words">{name}</h1>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="mt-1 min-h-11 max-w-full truncate text-left text-lg text-chalk-muted"
+            className="mt-1 min-h-11 max-w-full truncate text-left text-base text-chalk-muted"
           >
             {members.length} {members.length === 1 ? 'member' : 'members'} · {summary}
           </button>

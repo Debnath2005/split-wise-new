@@ -75,7 +75,7 @@ export function SignupPage() {
           Create account
         </Button>
       </form>
-      <p className="mt-6 text-center text-lg text-chalk-muted">
+      <p className="mt-6 text-center text-base text-chalk-muted">
         Already have an account?{' '}
         <Link to="/login" state={{ from }} className="font-semibold text-accent">
           Log in

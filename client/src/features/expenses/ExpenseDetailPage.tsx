@@ -39,7 +39,7 @@ function History({ expenseId, meId }: { expenseId: number; meId: number }) {
   if (!history.data?.items.length) return null;
   return (
     <section>
-      <h2 className="mb-2 text-3xl/tight font-bold">History</h2>
+      <h2 className="mb-2 text-2xl/tight font-bold">History</h2>
       <ul
         aria-label="History"
         className="divide-y divide-dashed divide-line overflow-hidden rounded-card border-[1.5px] border-dashed border-line-strong bg-board-raised"
@@ -123,11 +123,11 @@ export function ExpenseDetailPage() {
       <Back expense={expense} />
       <div className="flex flex-col gap-4">
         <Card>
-          <h1 className="text-3xl/tight font-semibold break-words">{expense.description}</h1>
-          <p className="mt-2 text-5xl/tight font-bold tracking-[-0.01em]">
+          <h1 className="text-2xl/tight font-semibold break-words">{expense.description}</h1>
+          <p className="mt-2 text-4xl/tight font-bold tracking-[-0.01em]">
             <Money paise={expense.amount_paise} />
           </p>
-          <p className="mt-2 text-lg text-chalk-muted">
+          <p className="mt-2 text-base text-chalk-muted">
             {formatLongDate(expense.expense_date)}
             {expense.group ? ` · ${expense.group.name}` : ' · No group'}
           </p>
@@ -145,7 +145,7 @@ export function ExpenseDetailPage() {
         </Card>
 
         <section>
-          <h2 className="mb-2 text-3xl/tight font-semibold">{SPLIT_LABEL[expense.split_type]}</h2>
+          <h2 className="mb-2 text-2xl/tight font-semibold">{SPLIT_LABEL[expense.split_type]}</h2>
           <List label="Shares">
             {expense.shares.map((s) => (
               <ListRow
@@ -174,7 +174,7 @@ export function ExpenseDetailPage() {
           </Card>
         )}
 
-        <p className="text-lg text-chalk-muted">
+        <p className="text-base text-chalk-muted">
           Added by {you(expense.created_by)} on{' '}
           {new Date(expense.created_at).toLocaleDateString('en-IN', {
             day: 'numeric',

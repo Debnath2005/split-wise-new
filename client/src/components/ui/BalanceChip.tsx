@@ -21,13 +21,13 @@ const LABELS: Record<Perspective, { positive: string; negative: string }> = {
  */
 export function BalanceChip({ paise, perspective }: { paise: number; perspective: Perspective }) {
   if (paise === 0) {
-    return <span className="shrink-0 text-lg text-chalk-muted">settled up</span>;
+    return <span className="shrink-0 text-base text-chalk-muted">settled up</span>;
   }
   const positive = paise > 0;
   return (
     <span
       className={cx(
-        'flex shrink-0 flex-col items-end text-right text-lg leading-tight',
+        'flex shrink-0 flex-col items-end text-right text-base leading-tight',
         positive ? 'text-positive' : 'text-negative',
       )}
     >

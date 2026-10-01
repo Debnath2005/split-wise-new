@@ -30,7 +30,7 @@ export function ImpactText({
   return (
     <span
       className={cx(
-        'flex shrink-0 flex-col text-lg',
+        'flex shrink-0 flex-col text-base',
         align === 'end' ? 'items-end text-right' : 'items-start',
         tone,
       )}

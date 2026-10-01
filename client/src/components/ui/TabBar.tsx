@@ -31,7 +31,7 @@ export function TabBar({ items, brand }: { items: TabItem[]; brand: ReactNode })
               to={item.to}
               className={({ isActive }) =>
                 cx(
-                  'relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-lg',
+                  'relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-base',
                   'md:min-h-11 md:flex-row md:justify-start md:gap-3 md:rounded-control md:px-3 md:text-xl',
                   isActive ? 'font-medium text-accent' : 'text-chalk-muted hover:text-chalk',
                 )
