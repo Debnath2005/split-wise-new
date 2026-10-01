@@ -6,6 +6,7 @@ interface ActivityInput {
   type: ActivityType;
   groupId?: number | null;
   expenseId?: number | null;
+  settlementId?: number | null;
   payload: Record<string, unknown>;
   /** Everyone whose feed shows this item (ADR-0011); duplicates are ignored. */
   recipientIds: number[];
@@ -20,6 +21,7 @@ export function recordActivity(tx: DbOrTx, input: ActivityInput): number {
       type: input.type,
       groupId: input.groupId ?? null,
       expenseId: input.expenseId ?? null,
+      settlementId: input.settlementId ?? null,
       payload: input.payload,
     })
     .returning({ id: activities.id })

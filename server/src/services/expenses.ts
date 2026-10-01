@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, or, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import {
   computeSplit,
@@ -7,7 +7,7 @@ import {
   type ExpenseSnapshot,
   type UpdateExpenseRequest,
   type ExpenseDetail,
-  type ExpenseListItem,
+  type LedgerListItem,
   type ExpensePage,
   type PersonRef,
 } from '@split-wise/shared';
@@ -15,6 +15,7 @@ import type { Db, DbOrTx } from '../db/client.js';
 import {
   expenseShares,
   expenses,
+  settlements,
   groupMembers,
   groups,
   users,
@@ -422,48 +423,115 @@ const payer = alias(users, 'payer');
 const myShare = alias(expenseShares, 'my_share');
 
 /** Newest first by expense date, then id; keyset-paginated. Deleted expenses are excluded. */
-function listExpenses(
+const fromUser = alias(users, 'from_user');
+const toUser = alias(users, 'to_user');
+
+interface Cursor {
+  date: string;
+  kind: 'e' | 's';
+  id: number;
+}
+
+const parseCursor = (before: string): Cursor => {
+  const [date, kind, id] = before.split('.') as [string, 'e' | 's', string];
+  return { date, kind, id: Number(id) };
+};
+
+/**
+ * Expenses and settlements interleaved by date (SPEC §10), newest first, keyset-paginated.
+ * Sort key, descending: (date, kind, id) with kind "e" < "s". Each table is read one row past
+ * the page, then the two are merged.
+ */
+function listLedger(
   db: DbOrTx,
   viewerId: number,
-  where: SQL,
+  expenseWhere: SQL,
+  settlementWhere: SQL,
   { before, limit }: PageOptions,
 ): ExpensePage {
-  const conditions = [isNull(expenses.deletedAt), where];
-  if (before) {
-    const [date, rawId] = before.split('.') as [string, string];
-    const id = Number(rawId);
-    conditions.push(
-      or(lt(expenses.expenseDate, date), and(eq(expenses.expenseDate, date), lt(expenses.id, id)))!,
-    );
-  }
+  const c = before ? parseCursor(before) : null;
 
-  const rows = db
+  const expenseAfterCursor = c
+    ? or(
+        lt(expenses.expenseDate, c.date),
+        and(eq(expenses.expenseDate, c.date), c.kind === 's' ? sql`1 = 1` : lt(expenses.id, c.id)),
+      )
+    : undefined;
+  const expenseRows = db
     .select({ expense: expenses, payer, groupName: groups.name, myOwed: myShare.owedPaise })
     .from(expenses)
     .innerJoin(payer, eq(payer.id, expenses.paidByUserId))
     .leftJoin(groups, eq(groups.id, expenses.groupId))
     .leftJoin(myShare, and(eq(myShare.expenseId, expenses.id), eq(myShare.userId, viewerId)))
-    .where(and(...conditions))
+    .where(and(isNull(expenses.deletedAt), expenseWhere, expenseAfterCursor))
     .orderBy(desc(expenses.expenseDate), desc(expenses.id))
     .limit(limit + 1)
     .all();
 
-  const page = rows.slice(0, limit);
-  const items: ExpenseListItem[] = page.map((r) => ({
-    id: r.expense.id,
-    group: r.expense.groupId ? { id: r.expense.groupId, name: r.groupName ?? '' } : null,
-    description: r.expense.description,
-    amount_paise: r.expense.amountPaise,
-    expense_date: r.expense.expenseDate,
-    split_type: r.expense.splitType,
-    paid_by: toRef(r.payer),
-    my_share_paise: r.myOwed ?? 0,
-  }));
+  const settlementAfterCursor = c
+    ? or(
+        lt(settlements.settledOn, c.date),
+        c.kind === 's'
+          ? and(eq(settlements.settledOn, c.date), lt(settlements.id, c.id))
+          : sql`1 = 0`,
+      )
+    : undefined;
+  const settlementRows = db
+    .select({ settlement: settlements, from: fromUser, to: toUser, groupName: groups.name })
+    .from(settlements)
+    .innerJoin(fromUser, eq(fromUser.id, settlements.fromUserId))
+    .innerJoin(toUser, eq(toUser.id, settlements.toUserId))
+    .leftJoin(groups, eq(groups.id, settlements.groupId))
+    .where(and(isNull(settlements.deletedAt), settlementWhere, settlementAfterCursor))
+    .orderBy(desc(settlements.settledOn), desc(settlements.id))
+    .limit(limit + 1)
+    .all();
+
+  type Entry = { key: Cursor; item: LedgerListItem };
+  const entries: Entry[] = [
+    ...expenseRows.map((r): Entry => ({
+      key: { date: r.expense.expenseDate, kind: 'e', id: r.expense.id },
+      item: {
+        kind: 'expense',
+        id: r.expense.id,
+        group: r.expense.groupId ? { id: r.expense.groupId, name: r.groupName ?? '' } : null,
+        description: r.expense.description,
+        amount_paise: r.expense.amountPaise,
+        expense_date: r.expense.expenseDate,
+        split_type: r.expense.splitType,
+        paid_by: toRef(r.payer),
+        my_share_paise: r.myOwed ?? 0,
+      },
+    })),
+    ...settlementRows.map((r): Entry => ({
+      key: { date: r.settlement.settledOn, kind: 's', id: r.settlement.id },
+      item: {
+        kind: 'settlement',
+        id: r.settlement.id,
+        group: r.settlement.groupId ? { id: r.settlement.groupId, name: r.groupName ?? '' } : null,
+        from: toRef(r.from),
+        to: toRef(r.to),
+        amount_paise: r.settlement.amountPaise,
+        method: r.settlement.method,
+        note: r.settlement.note,
+        settled_on: r.settlement.settledOn,
+      },
+    })),
+  ];
+  // Descending by (date, kind, id).
+  entries.sort(
+    (a, b) =>
+      b.key.date.localeCompare(a.key.date) ||
+      b.key.kind.localeCompare(a.key.kind) ||
+      b.key.id - a.key.id,
+  );
+
+  const page = entries.slice(0, limit);
   const last = page.at(-1);
   return {
-    expenses: items,
+    expenses: page.map((e) => e.item),
     next_cursor:
-      rows.length > limit && last ? `${last.expense.expenseDate}.${last.expense.id}` : null,
+      entries.length > limit && last ? `${last.key.date}.${last.key.kind}.${last.key.id}` : null,
   };
 }
 
@@ -474,7 +542,13 @@ export function listGroupExpenses(
   options: PageOptions,
 ): ExpensePage {
   requireGroupForMember(db, groupId, actorId);
-  return listExpenses(db, actorId, eq(expenses.groupId, groupId), options);
+  return listLedger(
+    db,
+    actorId,
+    eq(expenses.groupId, groupId),
+    eq(settlements.groupId, groupId),
+    options,
+  );
 }
 
 /** Expenses involving both people, in any group or none. */
@@ -491,10 +565,16 @@ export function listFriendExpenses(
     .from(groupMembers)
     .where(and(eq(groupMembers.userId, actorId), isNull(groupMembers.leftAt)));
   const visible = or(isNull(expenses.groupId), inArray(expenses.groupId, myGroups));
-  return listExpenses(
+  const settlementVisible = or(isNull(settlements.groupId), inArray(settlements.groupId, myGroups));
+  const between = or(
+    and(eq(settlements.fromUserId, actorId), eq(settlements.toUserId, friendId)),
+    and(eq(settlements.fromUserId, friendId), eq(settlements.toUserId, actorId)),
+  );
+  return listLedger(
     db,
     actorId,
     and(involves(db, actorId), involves(db, friendId), visible)!,
+    and(between, settlementVisible)!,
     options,
   );
 }

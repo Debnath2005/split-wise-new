@@ -1,6 +1,6 @@
 // Drizzle table definitions (SPEC §5). Tables are added milestone by milestone.
 import { sql } from 'drizzle-orm';
-import { ACTIVITY_TYPES, SPLIT_TYPES } from '@split-wise/shared';
+import { ACTIVITY_TYPES, SETTLEMENT_METHODS, SPLIT_TYPES } from '@split-wise/shared';
 import {
   type AnySQLiteColumn,
   check,
@@ -114,7 +114,7 @@ export const groupMembers = sqliteTable(
 
 export type { ActivityType } from '@split-wise/shared';
 
-/** SPEC §5 / ADR-0011. settlement_id is added with its table (M6). */
+/** SPEC §5 / ADR-0011. */
 export const activities = sqliteTable('activities', {
   id: integer('id').primaryKey(),
   actorUserId: integer('actor_user_id')
@@ -123,6 +123,7 @@ export const activities = sqliteTable('activities', {
   type: text('type', { enum: ACTIVITY_TYPES }).notNull(),
   groupId: integer('group_id').references(() => groups.id),
   expenseId: integer('expense_id').references((): AnySQLiteColumn => expenses.id),
+  settlementId: integer('settlement_id').references((): AnySQLiteColumn => settlements.id),
   /** JSON snapshot: {before, after} for updates, {before} for deletes. */
   payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
   createdAt: createdAt(),
@@ -205,3 +206,40 @@ export const expenseShares = sqliteTable(
 );
 
 export type ExpenseRow = typeof expenses.$inferSelect;
+
+/** SPEC §5: "from paid to ₹X". Self-reported (ADR-0013); soft-deleted like expenses (ADR-0010). */
+export const settlements = sqliteTable(
+  'settlements',
+  {
+    id: integer('id').primaryKey(),
+    /** NULL ⇒ a non-group settlement between friends. */
+    groupId: integer('group_id').references(() => groups.id),
+    fromUserId: integer('from_user_id')
+      .notNull()
+      .references(() => users.id),
+    toUserId: integer('to_user_id')
+      .notNull()
+      .references(() => users.id),
+    amountPaise: integer('amount_paise').notNull(),
+    method: text('method', { enum: SETTLEMENT_METHODS }).notNull(),
+    note: text('note'),
+    /** YYYY-MM-DD */
+    settledOn: text('settled_on').notNull(),
+    createdByUserId: integer('created_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    deletedAt: integer('deleted_at'),
+    deletedByUserId: integer('deleted_by_user_id').references(() => users.id),
+  },
+  (t) => [
+    check('settlements_parties_check', sql`${t.fromUserId} <> ${t.toUserId}`),
+    check('settlements_amount_check', sql`${t.amountPaise} > 0`),
+    check('settlements_method_check', sql`${t.method} IN ('upi', 'cash', 'other')`),
+    index('settlements_group_id_idx').on(t.groupId),
+    index('settlements_from_user_id_idx').on(t.fromUserId),
+    index('settlements_to_user_id_idx').on(t.toUserId),
+  ],
+);
+
+export type SettlementRow = typeof settlements.$inferSelect;

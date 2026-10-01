@@ -2,7 +2,7 @@
  * Balance queries (SPEC §6, ADR-0006). This module only *loads* non-deleted rows; every
  * calculation is done by the pure functions in shared/lib/money (CLAUDE.md).
  */
-import { and, eq, inArray, isNull, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, type SQL } from 'drizzle-orm';
 import {
   computeNets,
   pairwiseFor,
@@ -11,13 +11,45 @@ import {
   type BalanceSummaryResponse,
   type FriendDetailResponse,
   type GroupBalancesResponse,
+  type Ledger,
   type LedgerExpense,
+  type LedgerSettlement,
 } from '@split-wise/shared';
 import type { DbOrTx } from '../db/client.js';
-import { expenseShares, expenses, groupMembers, groups, users } from '../db/schema.js';
+import { expenseShares, expenses, groupMembers, groups, settlements, users } from '../db/schema.js';
 import { involves } from './sqlFragments.js';
 
 type ScopedExpense = LedgerExpense & { groupId: number | null };
+type ScopedSettlement = LedgerSettlement & { groupId: number | null };
+interface ScopedLedger {
+  expenses: ScopedExpense[];
+  settlements: ScopedSettlement[];
+}
+
+/** Loads non-deleted settlements matching `where` (SPEC §6: they count toward balances). */
+export function loadSettlements(db: DbOrTx, where: SQL | undefined): ScopedSettlement[] {
+  return db
+    .select({
+      groupId: settlements.groupId,
+      fromUserId: settlements.fromUserId,
+      toUserId: settlements.toUserId,
+      amountPaise: settlements.amountPaise,
+    })
+    .from(settlements)
+    .where(and(isNull(settlements.deletedAt), where))
+    .all();
+}
+
+const settlementInvolves = (userId: number) =>
+  or(eq(settlements.fromUserId, userId), eq(settlements.toUserId, userId));
+
+/** Restricts a scoped ledger to one scope (a group id, or null for non-group). */
+function inScope(ledger: ScopedLedger, groupId: number | null): Ledger {
+  return {
+    expenses: ledger.expenses.filter((e) => e.groupId === groupId),
+    settlements: ledger.settlements.filter((s) => s.groupId === groupId),
+  };
+}
 
 /** Loads non-deleted expenses matching `where`, with their shares. */
 export function loadLedger(db: DbOrTx, where: SQL | undefined): ScopedExpense[] {
@@ -63,7 +95,10 @@ export function loadLedger(db: DbOrTx, where: SQL | undefined): ScopedExpense[] 
 
 /** Your pairwise balance with everyone, across all groups and non-group (positive = they owe you). */
 export function balancesWithEveryone(db: DbOrTx, userId: number): Map<number, number> {
-  return pairwiseFor(userId, { expenses: loadLedger(db, involves(db, userId)) });
+  return pairwiseFor(userId, {
+    expenses: loadLedger(db, involves(db, userId)),
+    settlements: loadSettlements(db, settlementInvolves(userId)),
+  });
 }
 
 export function balanceSummary(db: DbOrTx, userId: number): BalanceSummaryResponse {
@@ -77,11 +112,22 @@ export function balanceWithFriend(
   userId: number,
   friendId: number,
 ): FriendDetailResponse['balance'] {
-  const ledger = loadLedger(db, and(involves(db, userId), involves(db, friendId)));
-  const scopes = new Map<number | null, ScopedExpense[]>();
-  for (const e of ledger) scopes.set(e.groupId, [...(scopes.get(e.groupId) ?? []), e]);
+  const ledger: ScopedLedger = {
+    expenses: loadLedger(db, and(involves(db, userId), involves(db, friendId))),
+    settlements: loadSettlements(
+      db,
+      or(
+        and(eq(settlements.fromUserId, userId), eq(settlements.toUserId, friendId)),
+        and(eq(settlements.fromUserId, friendId), eq(settlements.toUserId, userId)),
+      ),
+    ),
+  };
+  const scopes = new Set<number | null>([
+    ...ledger.expenses.map((e) => e.groupId),
+    ...ledger.settlements.map((s) => s.groupId),
+  ]);
 
-  const groupIds = [...scopes.keys()].filter((id): id is number => id !== null);
+  const groupIds = [...scopes].filter((id): id is number => id !== null);
   const names = new Map(
     groupIds.length
       ? db
@@ -93,10 +139,10 @@ export function balanceWithFriend(
       : [],
   );
 
-  const byScope = [...scopes.entries()]
-    .map(([groupId, list]) => ({
+  const byScope = [...scopes]
+    .map((groupId) => ({
       group: groupId === null ? null : { id: groupId, name: names.get(groupId) ?? '' },
-      balance_paise: pairwiseFor(userId, { expenses: list }).get(friendId) ?? 0,
+      balance_paise: pairwiseFor(userId, inScope(ledger, groupId)).get(friendId) ?? 0,
     }))
     // Groups by name, then non-group last.
     .sort((a, b) =>
@@ -109,7 +155,10 @@ export function balanceWithFriend(
   };
 }
 
-const groupLedger = (db: DbOrTx, groupId: number) => loadLedger(db, eq(expenses.groupId, groupId));
+const groupLedger = (db: DbOrTx, groupId: number): Ledger => ({
+  expenses: loadLedger(db, eq(expenses.groupId, groupId)),
+  settlements: loadSettlements(db, eq(settlements.groupId, groupId)),
+});
 
 /** Your net in each of the given groups (0 when you have no expenses there). */
 export function myNetsInGroups(
@@ -119,9 +168,12 @@ export function myNetsInGroups(
 ): Map<number, number> {
   const result = new Map<number, number>();
   if (groupIds.length === 0) return result;
-  const ledger = loadLedger(db, inArray(expenses.groupId, groupIds));
+  const ledger: ScopedLedger = {
+    expenses: loadLedger(db, inArray(expenses.groupId, groupIds)),
+    settlements: loadSettlements(db, inArray(settlements.groupId, groupIds)),
+  };
   for (const groupId of groupIds) {
-    const nets = computeNets({ expenses: ledger.filter((e) => e.groupId === groupId) });
+    const nets = computeNets(inScope(ledger, groupId));
     result.set(groupId, nets.get(userId) ?? 0);
   }
   return result;
@@ -129,7 +181,7 @@ export function myNetsInGroups(
 
 /** Your pairwise balances with each person inside one group (used to allow leaving). */
 export function pairwiseInGroup(db: DbOrTx, userId: number, groupId: number): Map<number, number> {
-  return pairwiseFor(userId, { expenses: groupLedger(db, groupId) });
+  return pairwiseFor(userId, groupLedger(db, groupId));
 }
 
 /**
@@ -137,7 +189,7 @@ export function pairwiseInGroup(db: DbOrTx, userId: number, groupId: number): Ma
  * until simplify debts arrives in M7. Caller must have checked membership.
  */
 export function groupBalances(db: DbOrTx, groupId: number): GroupBalancesResponse {
-  const ledger = { expenses: groupLedger(db, groupId) };
+  const ledger = groupLedger(db, groupId);
   const nets = computeNets(ledger);
   const transfers = pairwiseTransfers(ledger);
 

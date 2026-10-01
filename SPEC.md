@@ -250,7 +250,7 @@ Notes:
 ## 8. Settle Up with UPI
 
 ### Flow
-1. The user taps **Settle up** on a friend or group. The app proposes the amount (the pairwise owed amount, or the suggested transfer) and lets the user edit it, capped at the outstanding amount for convenience but not enforced.
+1. The user taps **Settle up** on a friend or **Settle** on a group's transfer. The app proposes the amount (the pairwise owed amount, or the suggested transfer) and lets the user edit it, capped at the outstanding amount for convenience but not enforced. On a friend, Settle up lists each non-zero scope (each shared group, and non-group) and records the settlement in that scope, so every per-scope balance really reaches 0.
 2. If the **payee has a `upi_vpa`**:
    - On mobile: a **"Pay ₹X via UPI"** button opens
      `upi://pay?pa=<vpa>&pn=<payee name>&am=<rupees.paise>&cu=INR&tn=<note>`
@@ -307,6 +307,7 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 
 **Users / Account**
 | PATCH | `/me` | `{name?, upi_vpa?, phone?}` |
+| PATCH | `/users/:id` | `{upi_vpa}` — only for a placeholder you created (SPEC §8) |
 | POST | `/me/password` | `{current, next}` |
 
 **Friends**

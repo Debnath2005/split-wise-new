@@ -400,7 +400,7 @@ describe('expense lists', () => {
       (await asha.get(`/groups/${groupId}/expenses?limit=2`)).body,
     );
     expect(first.expenses.map((e) => e.id)).toEqual([c, b]);
-    expect(first.next_cursor).toBe(`${TODAY}.${b}`);
+    expect(first.next_cursor).toBe(`${TODAY}.e.${b}`);
     const second = ExpensePageSchema.parse(
       (await asha.get(`/groups/${groupId}/expenses?limit=2&before=${first.next_cursor}`)).body,
     );
@@ -409,10 +409,16 @@ describe('expense lists', () => {
 
     // Impact from Asha's point of view (SPEC §11): lent ₹10 on c, borrowed ₹5 on b.
     const impacts = first.expenses.map((e) =>
-      expenseImpact(
-        { amountPaise: e.amount_paise, paidByUserId: e.paid_by.id, mySharePaise: e.my_share_paise },
-        asha.id,
-      ),
+      e.kind === 'expense'
+        ? expenseImpact(
+            {
+              amountPaise: e.amount_paise,
+              paidByUserId: e.paid_by.id,
+              mySharePaise: e.my_share_paise,
+            },
+            asha.id,
+          )
+        : null,
     );
     expect(impacts).toEqual([1000, -500]);
   });

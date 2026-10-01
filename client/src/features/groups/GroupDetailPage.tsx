@@ -74,7 +74,7 @@ export function GroupDetailPage() {
             emptyText="Tap “Add expense” to record the first one."
           />
         ) : (
-          <GroupBalances groupId={id} meId={me?.id ?? 0} />
+          <GroupBalances groupId={id} groupName={name} meId={me?.id ?? 0} />
         )}
       </Tabs>
 

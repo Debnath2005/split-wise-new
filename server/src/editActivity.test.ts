@@ -194,7 +194,9 @@ describe('DoD: delete then restore returns balances to where they were', () => {
     expect(await nets(asha, groupId)).not.toEqual(before.nets);
     expect((await asha.get(`/expenses/${expenseId}`)).status).toBe(404);
     const list = ExpensePageSchema.parse((await asha.get(`/groups/${groupId}/expenses`)).body);
-    expect(list.expenses.map((e) => e.description)).toEqual(['Fuel']);
+    expect(list.expenses.map((e) => (e.kind === 'expense' ? e.description : e.kind))).toEqual([
+      'Fuel',
+    ]);
 
     const restored = await ravi.post(`/expenses/${expenseId}/restore`);
     expect(restored.status).toBe(200);

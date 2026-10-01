@@ -52,3 +52,21 @@ export function findOrCreatePerson(tx: DbOrTx, actorId: number, input: PersonInp
     .returning()
     .get();
 }
+
+/**
+ * Sets the UPI ID of a placeholder (SPEC §8: "a placeholder's VPA can be set by its creator").
+ * Anyone else — or a real account, which manages its own — gets 404.
+ */
+export function setPlaceholderUpi(
+  db: DbOrTx,
+  actorId: number,
+  userId: number,
+  upiVpa: string | null,
+): Person {
+  const user = findUserById(db, userId);
+  if (!user || !user.isPlaceholder || user.createdByUserId !== actorId) {
+    throw new HttpError(404, 'NOT_FOUND', 'Person not found');
+  }
+  const updated = db.update(users).set({ upiVpa }).where(eq(users.id, userId)).returning().get()!;
+  return toPersonDto(updated);
+}

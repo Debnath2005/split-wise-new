@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'CONFLICT'
   | 'RATE_LIMITED'
   | 'SPLIT_SUM_MISMATCH'
+  | 'NO_VPA'
   | 'INTERNAL';
 
 /** Throw from routes/services; the error middleware turns it into the SPEC §10 envelope. */

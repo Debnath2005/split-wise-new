@@ -8,6 +8,7 @@ import {
   formatPaise,
   type ActivityItem,
   type ExpenseSnapshot,
+  type SettlementSnapshot,
   type SplitType,
 } from '@split-wise/shared';
 import { formatShortDate } from '../../lib/dates';
@@ -57,6 +58,17 @@ export function describeActivity(
         )
       : null;
   };
+
+  /** "Chitra paid Asha ₹9.66 via UPI in Goa". Settlements aren't "you get back / you owe". */
+  const paymentLine = (p: SettlementSnapshot): Segment[] => [
+    { text: name(p.from_user_id), strong: true },
+    { text: ' paid ' },
+    { text: nameLower(p.to_user_id), strong: true },
+    {
+      text: ` ${formatPaise(p.amount_paise)}${p.method === 'upi' ? ' via UPI' : p.method === 'cash' ? ' in cash' : ''}`,
+    },
+    ...inGroup,
+  ];
 
   const expenseLine = (verb: string, e: ExpenseSnapshot): Segment[] => [
     actor,
@@ -145,8 +157,13 @@ export function describeActivity(
           { text: item.payload.after.name, strong: true },
         ],
       };
-    default:
-      return { ...none, sentence: [actor, { text: ' recorded a payment' }, ...inGroup] };
+    case 'settlement_created':
+      return { ...none, sentence: paymentLine(item.payload.settlement) };
+    case 'settlement_deleted':
+      return {
+        ...none,
+        sentence: [actor, { text: ' deleted a payment: ' }, ...paymentLine(item.payload.before)],
+      };
   }
 }
 
