@@ -20,9 +20,10 @@ export function useGroups() {
   });
 }
 
-export function useGroup(id: number) {
+export function useGroup(id: number, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: groupsKeys.detail(id),
+    enabled,
     queryFn: async () =>
       (await api('GET', `/groups/${id}`, { schema: GroupDetailResponseSchema })).group,
   });

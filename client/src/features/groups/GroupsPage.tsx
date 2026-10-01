@@ -6,12 +6,15 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { List, ListRow } from '../../components/ui/ListRow';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { PageSpinner } from '../../components/ui/Spinner';
+import { Fab } from '../../components/ui/Fab';
 import { PlusIcon } from '../../components/ui/icons';
+import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
 import { CreateGroupSheet } from './CreateGroupSheet';
 
 export function GroupsPage() {
   const groups = useGroups();
   const [creating, setCreating] = useState(false);
+  const [addingExpense, setAddingExpense] = useState(false);
 
   return (
     <>
@@ -47,6 +50,8 @@ export function GroupsPage() {
       )}
 
       <CreateGroupSheet open={creating} onClose={() => setCreating(false)} />
+      <Fab onClick={() => setAddingExpense(true)}>Add expense</Fab>
+      <AddExpenseSheet open={addingExpense} onClose={() => setAddingExpense(false)} />
     </>
   );
 }

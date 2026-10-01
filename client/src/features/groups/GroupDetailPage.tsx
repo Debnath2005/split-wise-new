@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
+import { useMe } from '../../api/auth';
+import { useGroupExpenses } from '../../api/expenses';
 import { useGroup } from '../../api/groups';
 import { Alert } from '../../components/ui/Alert';
 import { BackLink } from '../../components/ui/BackLink';
@@ -7,7 +9,10 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { IconButton } from '../../components/ui/IconButton';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { Tabs } from '../../components/ui/Tabs';
+import { Fab } from '../../components/ui/Fab';
 import { SettingsIcon } from '../../components/ui/icons';
+import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
+import { ExpenseList } from '../expenses/ExpenseList';
 import { GroupSettingsSheet } from './GroupSettingsSheet';
 
 type Tab = 'expenses' | 'balances';
@@ -17,6 +22,9 @@ export function GroupDetailPage() {
   const group = useGroup(id);
   const [tab, setTab] = useState<Tab>('expenses');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const expenses = useGroupExpenses(id);
+  const { data: me } = useMe();
 
   if (group.isPending) return <PageSpinner />;
   if (group.isError) {
@@ -60,7 +68,11 @@ export function GroupDetailPage() {
         ]}
       >
         {tab === 'expenses' ? (
-          <EmptyState title="No expenses yet">Adding expenses arrives in M3.</EmptyState>
+          <ExpenseList
+            query={expenses}
+            meId={me?.id ?? 0}
+            emptyText="Tap “Add expense” to record the first one."
+          />
         ) : (
           <EmptyState title="All settled">Balances arrive in M4.</EmptyState>
         )}
@@ -71,6 +83,8 @@ export function GroupDetailPage() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+      <Fab onClick={() => setAdding(true)}>Add expense</Fab>
+      <AddExpenseSheet open={adding} onClose={() => setAdding(false)} context={{ groupId: id }} />
     </>
   );
 }

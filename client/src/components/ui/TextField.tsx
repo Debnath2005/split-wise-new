@@ -7,6 +7,14 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'si
   error?: string;
   /** Adds a Show/Hide toggle; the input must be type="password". */
   revealable?: boolean;
+  /** Fixed text before the value, e.g. "₹". */
+  prefix?: string;
+  /** Fixed text after the value, e.g. "%". */
+  suffix?: string;
+  /** "lg" for the headline amount field. */
+  size?: 'md' | 'lg';
+  /** Visually hide the label (it stays available to screen readers). */
+  hideLabel?: boolean;
 }
 
 /**
@@ -14,7 +22,20 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'si
  * Errors are linked with aria-describedby and announced.
  */
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { label, hint, error, revealable = false, type = 'text', className, readOnly, ...rest },
+  {
+    label,
+    hint,
+    error,
+    revealable = false,
+    prefix,
+    suffix,
+    size = 'md',
+    hideLabel = false,
+    type = 'text',
+    className,
+    readOnly,
+    ...rest
+  },
   ref,
 ) {
   const id = useId();
@@ -23,10 +44,24 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
 
   return (
     <div className={cx('flex flex-col gap-1.5', className)}>
-      <label htmlFor={id} className="text-sm font-semibold tracking-[0.01em]">
+      <label
+        htmlFor={id}
+        className={cx('text-sm font-semibold tracking-[0.01em]', hideLabel && 'sr-only')}
+      >
         {label}
       </label>
       <div className="relative">
+        {prefix && (
+          <span
+            aria-hidden
+            className={cx(
+              'pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-dark-2',
+              size === 'lg' ? 'text-2xl' : 'text-base',
+            )}
+          >
+            {prefix}
+          </span>
+        )}
         <input
           ref={ref}
           id={id}
@@ -36,12 +71,23 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
           aria-describedby={describedBy || undefined}
           className={cx(
             'min-h-11 w-full rounded-control border bg-white px-3 text-base text-ink placeholder:text-gray-dark-2/70',
+            size === 'lg' && 'min-h-14 text-2xl font-semibold',
+            prefix && (size === 'lg' ? 'pl-9' : 'pl-7'),
+            suffix && 'pr-8',
             error ? 'border-danger' : 'border-gray-light-1',
             readOnly && 'border-gray-light-3 bg-gray-light-3/50 text-gray-dark-2',
             revealable && 'pr-16',
           )}
           {...rest}
         />
+        {suffix && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-dark-2"
+          >
+            {suffix}
+          </span>
+        )}
         {revealable && (
           <button
             type="button"
