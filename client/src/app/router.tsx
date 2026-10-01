@@ -3,6 +3,10 @@ import { AccountPage } from '../features/account/AccountPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SignupPage } from '../features/auth/SignupPage';
 import { ComingSoonPage } from '../features/comingSoon/ComingSoonPage';
+import { FriendDetailPage } from '../features/friends/FriendDetailPage';
+import { FriendsPage } from '../features/friends/FriendsPage';
+import { GroupDetailPage } from '../features/groups/GroupDetailPage';
+import { GroupsPage } from '../features/groups/GroupsPage';
 import { AppShell } from './AppShell';
 import { RedirectIfAuthed, RequireAuth } from './guards';
 
@@ -20,8 +24,10 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: '/friends', element: <ComingSoonPage title="Friends" milestone="M2" /> },
-          { path: '/groups', element: <ComingSoonPage title="Groups" milestone="M2" /> },
+          { path: '/friends', element: <FriendsPage /> },
+          { path: '/friends/:userId', element: <FriendDetailPage /> },
+          { path: '/groups', element: <GroupsPage /> },
+          { path: '/groups/:groupId', element: <GroupDetailPage /> },
           { path: '/activity', element: <ComingSoonPage title="Activity" milestone="M5" /> },
           { path: '/account', element: <AccountPage /> },
         ],

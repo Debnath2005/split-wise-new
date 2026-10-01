@@ -28,7 +28,7 @@ export function SignupPage() {
     signup.mutate(values, {
       onSuccess: () => navigate(from, { replace: true }),
       onError: (err) =>
-        setFormError(applyServerErrors(err, setError, ['name', 'email', 'password'])),
+        setFormError(applyServerErrors(err, setError, ['name', 'email', 'phone', 'password'])),
     });
   });
 
@@ -51,6 +51,16 @@ export function SignupPage() {
           inputMode="email"
           error={errors.email?.message}
           {...register('email')}
+        />
+        <TextField
+          label="Phone (optional)"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="+919876543210"
+          hint="If a friend added you by phone, use the same number to see what they've shared."
+          error={errors.phone?.message}
+          {...register('phone')}
         />
         <TextField
           label="Password"

@@ -190,7 +190,8 @@ activity_recipients                 -- who sees this item in their feed
 
 ### Placeholder users (D2)
 - Add a friend or member as **name + (email or phone)**. If a user (real or placeholder) already has that email or phone, **reuse that row**. Otherwise insert a placeholder.
-- **Claiming**: when someone signs up with an email or phone that matches a placeholder, the placeholder row **becomes** their account: set `password_hash`, clear `is_placeholder`, set `claimed_at`. All existing expenses, groups and friendships come with it automatically because the id doesn't change.
+- **Group members are friends**: joining a group (at creation or when added) creates a friendship between the new member and every current member, so anyone you share a group with appears on your Friends list and in your balances.
+- **Claiming**: when someone signs up with an email or phone that matches a placeholder (email is checked first, then the optional signup phone), the placeholder row **becomes** their account: set `password_hash`, clear `is_placeholder`, set `claimed_at`. All existing expenses, groups and friendships come with it automatically because the id doesn't change.
 - Placeholders cannot log in, and never appear in user search except to the people who created or share a group with them.
 - ⚠️ **Known MVP risk**: without email verification, someone could sign up with another person's email and claim their placeholder, which would show them that person's balances. Mitigation in the MVP: claiming only exposes what the creator already entered (no sensitive data). The **post-MVP fix** is email OTP or verification before claiming. Track it in §13.
 
@@ -298,7 +299,7 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 **Auth**
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/auth/signup` | `{name, email, password}` → claims a matching placeholder or creates a user; sets cookie |
+| POST | `/auth/signup` | `{name, email, password, phone?}` → claims a matching placeholder (by email first, then by phone) or creates a user; sets cookie |
 | POST | `/auth/login` | `{email, password}`; rate limit 5/min per IP+email |
 | POST | `/auth/logout` | deletes session |
 | GET | `/auth/me` | current user |
@@ -315,7 +316,7 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 
 **Groups**
 | GET | `/groups` | my groups with my net in each |
-| POST | `/groups` | `{name, memberIds?: number[], newMembers?: {name,email?,phone?}[]}` |
+| POST | `/groups` | `{name, member_ids?: number[], new_members?: {name,email?,phone?}[]}`. Every member becomes friends with every other member |
 | GET | `/groups/:id` | group detail + members |
 | PATCH | `/groups/:id` | `{name?, simplify_debts?}` |
 | POST | `/groups/:id/members` | add an existing friend or a new placeholder |
@@ -442,6 +443,7 @@ Each milestone ends with something that runs and has passing tests. "DoD" means 
 ### M4: Balances (1 day)
 - Balance service: nets, pairwise, dashboard summary. Group balances endpoint (no simplification yet, raw pairwise).
 - UI: friends list chips, friend detail breakdown, group balances tab, home summary header.
+- Unfriend (`DELETE /friends/:userId`) and leave group (`DELETE /groups/:id/members/me`), both blocked unless the balance is 0.
 - **DoD**: fixture tests match hand calculations, Σ net = 0 holds, and the UI numbers match the API.
 
 ### M5: Edit/Delete + Activity Feed (1.5 days)
