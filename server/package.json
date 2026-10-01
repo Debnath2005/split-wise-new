@@ -1,0 +1,31 @@
+{
+  "name": "@split-wise/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('src/db/migrations','dist/db/migrations',{recursive:true})\"",
+    "start": "NODE_ENV=production node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@split-wise/shared": "^0.0.0",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.3",
+    "express": "^4.22.3",
+    "helmet": "^8.3.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^4.17.25",
+    "@types/supertest": "^7.2.1",
+    "drizzle-kit": "^0.31.11",
+    "supertest": "^7.3.0",
+    "tsx": "^4.23.15"
+  }
+}

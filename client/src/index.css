@@ -1,0 +1,37 @@
+@import 'tailwindcss';
+
+/* Design tokens from DESIGN.md. The default Tailwind palette is removed so only these colors exist. */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-brand: #00ed64;
+  --color-brand-dark: #13aa52;
+  --color-brand-soft: #e3fcf7;
+  --color-ink: #001e2b;
+  --color-ink-2: #112733;
+  --color-gray-dark-2: #3d4f58;
+  --color-gray-light-1: #c1c7c6;
+  --color-gray-light-3: #e8edeb;
+  --color-link: #016bf8;
+  --color-danger: #cf000f;
+  --color-warning: #ffc010;
+
+  --font-sans: 'Euclid Circular A', Akzidenz, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'Source Code Pro', Menlo, Consolas, monospace;
+
+  --radius-control: 8px;
+  --radius-card: 16px;
+  --radius-panel: 18px;
+
+  --shadow-card: 0 8px 18px rgba(0, 30, 43, 0.08);
+  --shadow-overlay: 0 18px 30px rgba(0, 30, 43, 0.14);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-white font-sans text-base/relaxed text-ink antialiased;
+  }
+}
