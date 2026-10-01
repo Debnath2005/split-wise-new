@@ -28,13 +28,18 @@ export function GroupBalances({
   if (query.isPending) return <PageSpinner />;
   if (query.isError) return <Alert tone="error">{query.error.message}</Alert>;
 
-  const { members, transfers } = query.data;
+  const { members, transfers, simplified } = query.data;
   const name = (p: { id: number; name: string }) => (p.id === meId ? 'You' : p.name);
 
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h2 className="mb-2 text-2xl/tight font-bold">Who pays whom</h2>
+        <h2 className="mb-1 text-2xl/tight font-bold">Who pays whom</h2>
+        <p className="mb-2 text-sm text-chalk-muted">
+          {simplified
+            ? 'Simplified so fewer payments are needed. Turn it off in group settings.'
+            : 'Each pair settles directly. Turn on Simplify debts in group settings for fewer payments.'}
+        </p>
         {transfers.length === 0 ? (
           <EmptyState title="All settled up">Nobody owes anything in this group.</EmptyState>
         ) : (

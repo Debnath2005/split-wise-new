@@ -5,8 +5,9 @@
 import { and, eq, inArray, isNull, or, type SQL } from 'drizzle-orm';
 import {
   computeNets,
+  groupTransfers,
   pairwiseFor,
-  pairwiseTransfers,
+  pairwiseFromTransfers,
   summarize,
   type BalanceSummaryResponse,
   type FriendDetailResponse,
@@ -14,6 +15,7 @@ import {
   type Ledger,
   type LedgerExpense,
   type LedgerSettlement,
+  type Transfer,
 } from '@split-wise/shared';
 import type { DbOrTx } from '../db/client.js';
 import { expenseShares, expenses, groupMembers, groups, settlements, users } from '../db/schema.js';
@@ -93,12 +95,61 @@ export function loadLedger(db: DbOrTx, where: SQL | undefined): ScopedExpense[] 
   }));
 }
 
-/** Your pairwise balance with everyone, across all groups and non-group (positive = they owe you). */
+const groupLedger = (db: DbOrTx, groupId: number): Ledger => ({
+  expenses: loadLedger(db, eq(expenses.groupId, groupId)),
+  settlements: loadSettlements(db, eq(settlements.groupId, groupId)),
+});
+
+const simplifyFlag = (db: DbOrTx, groupId: number): boolean =>
+  db.select({ s: groups.simplifyDebts }).from(groups).where(eq(groups.id, groupId)).get()?.s ??
+  false;
+
+/**
+ * A group's who-pays-whom (SPEC §6/§7): the simplified transfers when the group's switch is on,
+ * otherwise the raw pairwise debts. These are also the group's pairwise balances everywhere.
+ */
+export function transfersForGroup(db: DbOrTx, groupId: number): Transfer[] {
+  return groupTransfers(groupLedger(db, groupId), simplifyFlag(db, groupId));
+}
+
+/** Groups whose balances can involve you: your current groups plus any with your rows in them. */
+function groupsInvolving(db: DbOrTx, userId: number): number[] {
+  const current = db
+    .select({ id: groupMembers.groupId })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.userId, userId), isNull(groupMembers.leftAt)))
+    .all()
+    .map((r) => r.id);
+  const fromRows = [
+    ...loadLedger(db, involves(db, userId)).map((e) => e.groupId),
+    ...loadSettlements(db, settlementInvolves(userId)).map((x) => x.groupId),
+  ].filter((id): id is number => id !== null);
+  return [...new Set([...current, ...fromRows])];
+}
+
+const nonGroup = (
+  db: DbOrTx,
+  where: SQL | undefined,
+  settlementWhere: SQL | undefined,
+): Ledger => ({
+  expenses: loadLedger(db, and(isNull(expenses.groupId), where)),
+  settlements: loadSettlements(db, and(isNull(settlements.groupId), settlementWhere)),
+});
+
+const addInto = (target: Map<number, number>, source: Map<number, number>) => {
+  for (const [id, v] of source) target.set(id, (target.get(id) ?? 0) + v);
+};
+
+/**
+ * Your pairwise balance with everyone (positive = they owe you): raw for non-group, and each
+ * group's transfers for groups — simplified where the group has it on (SPEC §6).
+ */
 export function balancesWithEveryone(db: DbOrTx, userId: number): Map<number, number> {
-  return pairwiseFor(userId, {
-    expenses: loadLedger(db, involves(db, userId)),
-    settlements: loadSettlements(db, settlementInvolves(userId)),
-  });
+  const total = pairwiseFor(userId, nonGroup(db, involves(db, userId), settlementInvolves(userId)));
+  for (const groupId of groupsInvolving(db, userId)) {
+    addInto(total, pairwiseFromTransfers(userId, transfersForGroup(db, groupId)));
+  }
+  return total;
 }
 
 export function balanceSummary(db: DbOrTx, userId: number): BalanceSummaryResponse {
@@ -112,53 +163,51 @@ export function balanceWithFriend(
   userId: number,
   friendId: number,
 ): FriendDetailResponse['balance'] {
-  const ledger: ScopedLedger = {
-    expenses: loadLedger(db, and(involves(db, userId), involves(db, friendId))),
-    settlements: loadSettlements(
-      db,
-      or(
-        and(eq(settlements.fromUserId, userId), eq(settlements.toUserId, friendId)),
-        and(eq(settlements.fromUserId, friendId), eq(settlements.toUserId, userId)),
-      ),
-    ),
-  };
-  const scopes = new Set<number | null>([
-    ...ledger.expenses.map((e) => e.groupId),
-    ...ledger.settlements.map((s) => s.groupId),
-  ]);
+  const between = or(
+    and(eq(settlements.fromUserId, userId), eq(settlements.toUserId, friendId)),
+    and(eq(settlements.fromUserId, friendId), eq(settlements.toUserId, userId)),
+  );
+  const byScope: FriendDetailResponse['balance']['by_scope'] = [];
 
-  const groupIds = [...scopes].filter((id): id is number => id !== null);
+  // Non-group: raw pairwise, shown if you share any non-group rows.
+  const ng = nonGroup(db, and(involves(db, userId), involves(db, friendId)), between);
+  if (ng.expenses.length || (ng.settlements?.length ?? 0)) {
+    byScope.push({ group: null, balance_paise: pairwiseFor(userId, ng).get(friendId) ?? 0 });
+  }
+
+  // Groups: from each group's transfers. Shown if there's a balance, or you both have rows there.
+  const mine = new Set(groupsInvolving(db, userId));
+  const both = groupsInvolving(db, friendId).filter((id) => mine.has(id));
   const names = new Map(
-    groupIds.length
+    both.length
       ? db
           .select({ id: groups.id, name: groups.name })
           .from(groups)
-          .where(inArray(groups.id, groupIds))
+          .where(inArray(groups.id, both))
           .all()
           .map((g) => [g.id, g.name])
       : [],
   );
+  const shared = new Set(
+    loadLedger(db, and(involves(db, userId), involves(db, friendId))).map((e) => e.groupId),
+  );
+  for (const groupId of both) {
+    const balance =
+      pairwiseFromTransfers(userId, transfersForGroup(db, groupId)).get(friendId) ?? 0;
+    if (balance !== 0 || shared.has(groupId)) {
+      byScope.push({
+        group: { id: groupId, name: names.get(groupId) ?? '' },
+        balance_paise: balance,
+      });
+    }
+  }
 
-  const byScope = [...scopes]
-    .map((groupId) => ({
-      group: groupId === null ? null : { id: groupId, name: names.get(groupId) ?? '' },
-      balance_paise: pairwiseFor(userId, inScope(ledger, groupId)).get(friendId) ?? 0,
-    }))
-    // Groups by name, then non-group last.
-    .sort((a, b) =>
-      a.group && b.group ? a.group.name.localeCompare(b.group.name) : a.group ? -1 : 1,
-    );
-
-  return {
-    total_paise: byScope.reduce((sum, s) => sum + s.balance_paise, 0),
-    by_scope: byScope,
-  };
+  // Groups by name, then non-group last.
+  byScope.sort((a, b) =>
+    a.group && b.group ? a.group.name.localeCompare(b.group.name) : a.group ? -1 : 1,
+  );
+  return { total_paise: byScope.reduce((sum, s) => sum + s.balance_paise, 0), by_scope: byScope };
 }
-
-const groupLedger = (db: DbOrTx, groupId: number): Ledger => ({
-  expenses: loadLedger(db, eq(expenses.groupId, groupId)),
-  settlements: loadSettlements(db, eq(settlements.groupId, groupId)),
-});
 
 /** Your net in each of the given groups (0 when you have no expenses there). */
 export function myNetsInGroups(
@@ -181,17 +230,15 @@ export function myNetsInGroups(
 
 /** Your pairwise balances with each person inside one group (used to allow leaving). */
 export function pairwiseInGroup(db: DbOrTx, userId: number, groupId: number): Map<number, number> {
-  return pairwiseFor(userId, groupLedger(db, groupId));
+  return pairwiseFromTransfers(userId, transfersForGroup(db, groupId));
 }
 
-/**
- * Member nets and who-pays-whom for a group (SPEC §6 "Group balances"). Raw pairwise transfers
- * until simplify debts arrives in M7. Caller must have checked membership.
- */
+/** Member nets and who-pays-whom for a group (SPEC §6). Caller must have checked membership. */
 export function groupBalances(db: DbOrTx, groupId: number): GroupBalancesResponse {
   const ledger = groupLedger(db, groupId);
   const nets = computeNets(ledger);
-  const transfers = pairwiseTransfers(ledger);
+  const simplified = simplifyFlag(db, groupId);
+  const transfers = groupTransfers(ledger, simplified);
 
   const memberIds = db
     .select({ id: groupMembers.userId })
@@ -220,6 +267,6 @@ export function groupBalances(db: DbOrTx, groupId: number): GroupBalancesRespons
       to: ref(t.toUserId),
       amount_paise: t.amountPaise,
     })),
-    simplified: false,
+    simplified,
   };
 }
