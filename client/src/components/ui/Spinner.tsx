@@ -1,31 +1,24 @@
 import { cx } from './cx';
 
-export function Spinner({ className, label }: { className?: string; label?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={cx('size-5 animate-spin', className)}
-      role={label ? 'status' : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-    >
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-      <path
-        d="M22 12a10 10 0 0 0-10-10"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+/** A shimmering placeholder block (DESIGN.md: skeletons, never circular spinners). */
+export function Skeleton({ className }: { className?: string }) {
+  return <span aria-hidden className={cx('skeleton block', className)} />;
 }
 
-/** Centered spinner for whole-page loading states. */
+/** Whole-page loading state: a few shimmering rows shaped like a list. */
 export function PageSpinner() {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center text-gray-dark-2">
-      <Spinner className="size-8" label="Loading" />
+    <div role="status" aria-label="Loading" className="flex flex-col gap-3 py-2">
+      <Skeleton className="h-9 w-2/5" />
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="size-10 rounded-full" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-3 w-2/5" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

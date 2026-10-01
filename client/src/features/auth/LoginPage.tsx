@@ -57,9 +57,9 @@ export function LoginPage() {
           Log in
         </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-dark-2">
+      <p className="mt-6 text-center text-lg text-chalk-muted">
         New here?{' '}
-        <Link to="/signup" state={{ from }} className="font-semibold text-link">
+        <Link to="/signup" state={{ from }} className="font-semibold text-accent">
           Create an account
         </Link>
       </p>

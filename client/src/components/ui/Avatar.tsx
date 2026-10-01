@@ -21,10 +21,10 @@ export function Avatar({
       aria-hidden
       className={cx(
         'inline-flex shrink-0 items-center justify-center rounded-full font-semibold',
-        size === 'md' ? 'size-10 text-sm' : 'size-16 text-xl',
+        size === 'md' ? 'size-10 text-lg' : 'size-16 text-3xl',
         placeholder
-          ? 'border border-dashed border-gray-dark-2 bg-white text-gray-dark-2'
-          : 'bg-brand-soft text-green-text',
+          ? 'border-[1.5px] border-dashed border-line-strong bg-transparent text-chalk-muted'
+          : 'bg-slate text-yellow',
       )}
     >
       {initials(name)}

@@ -1,5 +1,4 @@
 import type { ButtonHTMLAttributes } from 'react';
-import { Spinner } from './Spinner';
 import { cx } from './cx';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,12 +8,24 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants = {
-  // DESIGN.md §4, adapted per §10: ink text stays on hover (white on #13AA52 fails contrast).
-  primary: 'border-brand bg-brand text-ink hover:border-brand-dark hover:bg-brand-dark',
-  secondary: 'border-gray-light-1 bg-white text-ink hover:bg-gray-light-3',
+  // DESIGN.md: accent fill, Deep Slate text (10.3:1), weight 600; hover ≈8% darker + lift.
+  primary: 'border-accent bg-accent text-slate hover:border-accent-strong hover:bg-accent-strong',
+  // Ghost: 1.5px chalk outline, chalk text, subtle fill on hover.
+  secondary: 'border-line-strong bg-transparent text-chalk hover:bg-chalk/10',
 };
 
-/** 44px minimum height (DESIGN.md §10). Shows a spinner and blocks clicks while `loading`. */
+/** Chalk "…" shown while busy — DESIGN.md forbids circular spinners. */
+function BusyDots() {
+  return (
+    <span aria-hidden className="chalk-dots inline-flex gap-0.5">
+      <span>•</span>
+      <span>•</span>
+      <span>•</span>
+    </span>
+  );
+}
+
+/** 44px minimum height (DESIGN.md adaptations). Shows animated dots and blocks clicks while `loading`. */
 export function Button({
   variant = 'primary',
   loading = false,
@@ -31,16 +42,16 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-control border px-4 text-sm leading-none font-semibold tracking-[0.01em] transition-colors',
-        'disabled:cursor-not-allowed disabled:opacity-60',
+        'chalk-press inline-flex min-h-11 items-center justify-center gap-2 rounded-control border-[1.5px] px-4 text-xl leading-none font-semibold',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         variants[variant],
         fullWidth && 'w-full',
         className,
       )}
       {...rest}
     >
-      {loading && <Spinner className="size-4" />}
       {children}
+      {loading && <BusyDots />}
     </button>
   );
 }

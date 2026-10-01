@@ -76,33 +76,30 @@ function CreateGroupForm({
       />
 
       <fieldset>
-        <legend className="mb-1 text-sm font-semibold">Friends</legend>
+        <legend className="mb-1 text-lg font-semibold">Friends</legend>
         {friends.data?.length ? (
           friends.data.map((f) => (
             <Checkbox key={f.id} checked={picked.has(f.id)} onChange={(on) => toggle(f.id, on)}>
               <Avatar name={f.name} placeholder={f.is_placeholder} />
               <span className="min-w-0">
                 <span className="block truncate">{f.name}</span>
-                <span className="block truncate text-sm text-gray-dark-2">{contactOf(f)}</span>
+                <span className="block truncate text-lg text-chalk-muted">{contactOf(f)}</span>
               </span>
             </Checkbox>
           ))
         ) : (
-          <p className="text-sm text-gray-dark-2">
+          <p className="text-lg text-chalk-muted">
             {friends.isPending ? 'Loading friends…' : 'No friends yet — add people below.'}
           </p>
         )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 text-sm font-semibold">Someone new</legend>
+        <legend className="mb-1 text-lg font-semibold">Someone new</legend>
         {newMembers.fields.map((field, i) => {
           const e = errors.new_members?.[i];
           return (
-            <div
-              key={field.id}
-              className="flex flex-col gap-3 rounded-card border border-gray-light-3 p-4"
-            >
+            <div key={field.id} className="flex flex-col gap-3 rounded-card border border-line p-4">
               <TextField
                 label="Name"
                 autoComplete="off"

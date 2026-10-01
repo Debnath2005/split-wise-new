@@ -20,7 +20,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, children }: Tabs
     <div>
       <div
         role="tablist"
-        className="mb-4 grid auto-cols-fr grid-flow-col rounded-control bg-gray-light-3 p-1"
+        className="mb-4 grid auto-cols-fr grid-flow-col rounded-control bg-board-sunken p-1"
       >
         {tabs.map((tab) => (
           <button
@@ -32,8 +32,8 @@ export function Tabs<T extends string>({ tabs, value, onChange, children }: Tabs
             aria-controls={`${id}-panel`}
             onClick={() => onChange(tab.value)}
             className={cx(
-              'min-h-10 rounded-[6px] text-sm font-semibold',
-              tab.value === value ? 'bg-white text-ink shadow-card' : 'text-gray-dark-2',
+              'min-h-10 rounded-[6px] text-xl font-semibold transition-colors',
+              tab.value === value ? 'bg-board-raised text-accent shadow-card' : 'text-chalk-muted',
             )}
           >
             {tab.label}

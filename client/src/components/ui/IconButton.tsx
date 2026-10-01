@@ -21,7 +21,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cx(
-        'inline-flex size-11 shrink-0 items-center justify-center rounded-control text-ink hover:bg-gray-light-3',
+        'inline-flex size-11 shrink-0 items-center justify-center rounded-control text-chalk hover:bg-chalk/10',
         className,
       )}
       {...rest}

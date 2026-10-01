@@ -1,5 +1,5 @@
 import { useParams } from 'react-router';
-import { basisPointsToPercentString, formatPaise, type ExpenseDetail } from '@split-wise/shared';
+import { basisPointsToPercentString, type ExpenseDetail } from '@split-wise/shared';
 import { useMe } from '../../api/auth';
 import { useExpense } from '../../api/expenses';
 import { Alert } from '../../components/ui/Alert';
@@ -8,6 +8,7 @@ import { BackLink } from '../../components/ui/BackLink';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { List, ListRow } from '../../components/ui/ListRow';
+import { Money } from '../../components/ui/Money';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { formatLongDate } from '../../lib/dates';
 import { ImpactText } from './ImpactText';
@@ -50,15 +51,15 @@ export function ExpenseDetailPage() {
       <Back expense={expense} />
       <div className="flex flex-col gap-4">
         <Card>
-          <h1 className="text-2xl/tight font-semibold break-words">{expense.description}</h1>
-          <p className="mt-2 text-[32px]/tight font-bold tracking-[-0.01em]">
-            {formatPaise(expense.amount_paise)}
+          <h1 className="text-3xl/tight font-semibold break-words">{expense.description}</h1>
+          <p className="mt-2 text-5xl/tight font-bold tracking-[-0.01em]">
+            <Money paise={expense.amount_paise} />
           </p>
-          <p className="mt-2 text-sm text-gray-dark-2">
+          <p className="mt-2 text-lg text-chalk-muted">
             {formatLongDate(expense.expense_date)}
             {expense.group ? ` · ${expense.group.name}` : ' · No group'}
           </p>
-          <div className="mt-4 flex items-center justify-between gap-4 border-t border-gray-light-3 pt-4">
+          <div className="mt-4 flex items-center justify-between gap-4 border-t border-line pt-4">
             <span>
               <span className="font-semibold">{you(expense.paid_by)}</span> paid
             </span>
@@ -72,7 +73,7 @@ export function ExpenseDetailPage() {
         </Card>
 
         <section>
-          <h2 className="mb-2 text-xl/tight font-semibold">{SPLIT_LABEL[expense.split_type]}</h2>
+          <h2 className="mb-2 text-3xl/tight font-semibold">{SPLIT_LABEL[expense.split_type]}</h2>
           <List label="Shares">
             {expense.shares.map((s) => (
               <ListRow
@@ -89,7 +90,7 @@ export function ExpenseDetailPage() {
                     ? `${basisPointsToPercentString(s.input_value)}%`
                     : undefined
                 }
-                trailing={<span className="font-semibold">{formatPaise(s.owed_paise)}</span>}
+                trailing={<Money paise={s.owed_paise} className="font-semibold" />}
               />
             ))}
           </List>
@@ -101,7 +102,7 @@ export function ExpenseDetailPage() {
           </Card>
         )}
 
-        <p className="text-sm text-gray-dark-2">
+        <p className="text-lg text-chalk-muted">
           Added by {you(expense.created_by)} on{' '}
           {new Date(expense.created_at).toLocaleDateString('en-IN', {
             day: 'numeric',

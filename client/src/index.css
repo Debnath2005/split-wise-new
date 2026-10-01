@@ -1,43 +1,192 @@
 @import 'tailwindcss';
 
-/* Design tokens from DESIGN.md. The default Tailwind palette is removed so only these colors exist. */
+/*
+ * Chalkboard theme (DESIGN.md + its "Split-wise Adaptations" section). Dark only.
+ * The default Tailwind palette is removed so only these tokens exist.
+ */
 @theme {
   --color-*: initial;
-  --color-white: #ffffff;
-  --color-brand: #00ed64;
-  --color-brand-dark: #13aa52;
-  --color-brand-soft: #e3fcf7;
-  /* DESIGN.md §10: text-safe green (#00ED64 is for fills only). */
-  --color-green-text: #00684a;
-  --color-ink: #001e2b;
-  --color-ink-2: #112733;
-  --color-gray-dark-2: #3d4f58;
-  --color-gray-light-1: #c1c7c6;
-  --color-gray-light-3: #e8edeb;
-  --color-link: #016bf8;
-  --color-danger: #cf000f;
-  --color-warning: #ffc010;
 
-  --font-sans: 'Euclid Circular A', Akzidenz, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-mono: 'Source Code Pro', Menlo, Consolas, monospace;
+  /* Surfaces */
+  --color-board: #2d4a3e; /* page: Chalkboard Green */
+  --color-board-raised: #355446; /* cards, sheets, nav */
+  --color-board-sunken: #233a30; /* inputs, tab track */
+  --color-slate: #1a1a2e; /* Deep Slate: text on accent fills */
 
-  --radius-control: 8px;
-  --radius-card: 16px;
-  --radius-panel: 18px;
+  /* Text */
+  --color-chalk: #f5f5dc; /* body text — 8.8:1 on board */
+  --color-chalk-muted: #c9c9b0; /* secondary text — 5.8:1 */
+  --color-pink: #f48fb1; /* headings / large accents only */
 
-  --shadow-card: 0 8px 18px rgba(0, 30, 43, 0.08);
-  --shadow-overlay: 0 18px 30px rgba(0, 30, 43, 0.14);
+  /* Accents and states */
+  --color-accent: #81d4fa; /* Chalk Blue: links, focus, primary button */
+  --color-accent-strong: #6cc4ee; /* primary hover (≈8% darker) */
+  --color-yellow: #fff59d; /* warnings, attention */
+  --color-positive: #a5d6a7; /* "you lent" / owed to you */
+  --color-negative: #ffab91; /* "you borrowed" / you owe (Chalk Orange) */
+  --color-danger: #ffaaaa; /* errors */
+
+  /* Chalk lines */
+  --color-line: rgb(245 245 220 / 0.28);
+  --color-line-strong: rgb(245 245 220 / 0.5);
+
+  --font-sans: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.5rem;
+  --radius-panel: 0.75rem;
+
+  --shadow-card: 0 2px 12px rgb(0 0 0 / 0.18);
+  --shadow-lift: 0 6px 18px rgb(0 0 0 / 0.28);
+  --shadow-overlay: 0 18px 40px rgb(0 0 0 / 0.45);
+
+  --animate-chalk-in: chalk-in 540ms ease-out both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes chalk-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
 }
 
 @layer base {
   html {
+    color-scheme: dark; /* native date pickers, selects and scrollbars render dark */
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-white font-sans text-base/relaxed text-ink antialiased;
+    @apply bg-board font-sans text-xl/normal text-chalk antialiased;
+    /* Grain: an SVG noise tile (data: URI is allowed by the CSP). */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 0.9 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-attachment: fixed;
   }
-  /* DESIGN.md §10: visible ink focus ring with offset. */
+  h1,
+  h2,
+  h3 {
+    @apply text-pink;
+    text-shadow: 0 0 6px rgb(244 143 177 / 0.35);
+  }
+  /* DESIGN.md: focus ring 2px accent, offset 2px. */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-ink;
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+  ::selection {
+    @apply bg-accent text-slate;
+  }
+  /* Caveat's slanted strokes overhang their advance width; keep \`truncate\` from clipping the last
+     letter. In the base layer, so an explicit pr-* utility still wins. */
+  [class~='truncate'] {
+    padding-inline-end: 0.2em;
+  }
+}
+
+@layer components {
+  /* Money amounts: monospace with tabular figures (DESIGN.md adaptations). */
+  .money {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8em;
+    letter-spacing: -0.01em;
+  }
+
+  /* Skeleton shimmer — the design forbids circular spinners. */
+  .skeleton {
+    border-radius: var(--radius-control);
+    background: linear-gradient(
+        90deg,
+        rgb(245 245 220 / 0.06) 25%,
+        rgb(245 245 220 / 0.16) 50%,
+        rgb(245 245 220 / 0.06) 75%
+      )
+      0 0 / 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  /* Staggered entry for list children: 120ms apart, capped so long lists don't lag. */
+  .chalk-stagger > * {
+    animation: var(--animate-chalk-in);
+  }
+  .chalk-stagger > :nth-child(2) {
+    animation-delay: 120ms;
+  }
+  .chalk-stagger > :nth-child(3) {
+    animation-delay: 240ms;
+  }
+  .chalk-stagger > :nth-child(4) {
+    animation-delay: 360ms;
+  }
+  .chalk-stagger > :nth-child(5) {
+    animation-delay: 480ms;
+  }
+  .chalk-stagger > :nth-child(n + 6) {
+    animation-delay: 600ms;
+  }
+
+  /* Hover lift + tactile press for buttons (transform/opacity only). */
+  .chalk-press {
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out,
+      background-color 200ms ease-out;
+  }
+  @media (hover: hover) {
+    .chalk-press:not(:disabled):hover {
+      transform: scale(1.03);
+      box-shadow: var(--shadow-lift);
+    }
+  }
+  .chalk-press:not(:disabled):active {
+    transform: translateY(1px);
+  }
+
+  /* "Saving…" dots for busy buttons. */
+  .chalk-dots > span {
+    animation: chalk-dot 1s ease-in-out infinite;
+  }
+  .chalk-dots > span:nth-child(2) {
+    animation-delay: 150ms;
+  }
+  .chalk-dots > span:nth-child(3) {
+    animation-delay: 300ms;
+  }
+  @keyframes chalk-dot {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+/* Respect "reduce motion": no entry animations, lifts, shimmer or dots. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .chalk-press:not(:disabled):hover,
+  .chalk-press:not(:disabled):active {
+    transform: none;
   }
 }

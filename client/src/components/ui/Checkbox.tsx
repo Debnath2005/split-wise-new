@@ -14,7 +14,7 @@ export function Checkbox({ checked, onChange, children }: CheckboxProps) {
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-5 shrink-0 accent-green-text"
+        className="size-6 shrink-0 accent-accent"
       />
       <span className="flex min-w-0 flex-1 items-center gap-3">{children}</span>
     </label>

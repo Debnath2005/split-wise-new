@@ -21,6 +21,7 @@ import { AmountInput } from '../../components/ui/AmountInput';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Checkbox } from '../../components/ui/Checkbox';
+import { Money } from '../../components/ui/Money';
 import { Select } from '../../components/ui/Select';
 import { Sheet } from '../../components/ui/Sheet';
 import { TextField } from '../../components/ui/TextField';
@@ -198,7 +199,7 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
 
       {!groupId && (
         <fieldset>
-          <legend className="mb-1 text-sm font-semibold">Friends in this expense</legend>
+          <legend className="mb-1 text-lg font-semibold">Friends in this expense</legend>
           {friends.data?.length ? (
             friends.data.map((f) => (
               <Checkbox
@@ -218,7 +219,7 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
               </Checkbox>
             ))
           ) : (
-            <p className="text-sm text-gray-dark-2">
+            <p className="text-lg text-chalk-muted">
               {friends.isPending ? 'Loading friends…' : 'Add a friend first to split with them.'}
             </p>
           )}
@@ -263,7 +264,7 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
       </div>
 
       <fieldset>
-        <legend className="mb-1 text-sm font-semibold">
+        <legend className="mb-1 text-lg font-semibold">
           {splitType === 'equal'
             ? 'Split between'
             : splitType === 'exact'
@@ -271,11 +272,11 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
               : 'Percent per person'}
         </legend>
         {pool.length === 0 && (
-          <p className="text-sm text-gray-dark-2">
+          <p className="text-lg text-chalk-muted">
             {groupId ? 'Loading members…' : 'Pick at least one friend above.'}
           </p>
         )}
-        <ul className="divide-y divide-gray-light-3">
+        <ul className="divide-y divide-line">
           {pool.map((person) => {
             const name = person.id === me?.id ? `${person.name} (you)` : person.name;
             const share = owedBy.get(person.id);
@@ -297,7 +298,7 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
                     <Avatar name={person.name} placeholder={person.is_placeholder} />
                     <span className="min-w-0 flex-1 truncate">{name}</span>
                     {included && share !== undefined && (
-                      <span className="shrink-0 font-semibold">{formatPaise(share)}</span>
+                      <Money paise={share} className="shrink-0 font-semibold" />
                     )}
                   </Checkbox>
                 </li>
@@ -309,7 +310,7 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
                 <span className="min-w-0 flex-1 pt-2.5">
                   <span className="block truncate">{name}</span>
                   {splitType === 'percent' && share !== undefined && (
-                    <span className="block text-sm text-gray-dark-2">{formatPaise(share)}</span>
+                    <Money paise={share} className="block text-lg text-chalk-muted" />
                   )}
                 </span>
                 <div className="w-32 shrink-0">
@@ -355,14 +356,14 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
         onChange={(e) => setNotes(e.target.value)}
       />
 
-      <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col gap-2 border-t border-gray-light-3 bg-white px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col gap-2 border-t-[1.5px] border-dashed border-line bg-board-raised px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <p
           aria-live="polite"
           className={cx(
-            'text-sm font-semibold',
-            status.tone === 'ok' && 'text-green-text',
-            status.tone === 'warn' && 'text-danger',
-            status.tone === 'muted' && 'text-gray-dark-2',
+            'text-lg font-semibold',
+            status.tone === 'ok' && 'text-positive',
+            status.tone === 'warn' && 'text-yellow',
+            status.tone === 'muted' && 'text-chalk-muted',
           )}
         >
           {status.text}

@@ -1,4 +1,5 @@
-import { expenseImpact, formatPaise } from '@split-wise/shared';
+import { expenseImpact } from '@split-wise/shared';
+import { Money } from '../../components/ui/Money';
 import { cx } from '../../components/ui/cx';
 
 interface ImpactTextProps {
@@ -9,7 +10,7 @@ interface ImpactTextProps {
   align?: 'end' | 'start';
 }
 
-/** "you lent ₹800" (green) / "you borrowed ₹400" (red) / "not involved" (grey) — SPEC §11. */
+/** "you lent ₹800" (chalk green) / "you borrowed ₹400" (chalk orange) / "not involved" (muted) — SPEC §11. */
 export function ImpactText({
   amountPaise,
   paidByUserId,
@@ -20,22 +21,22 @@ export function ImpactText({
   const impact = expenseImpact({ amountPaise, paidByUserId, mySharePaise }, meId);
   const involved = paidByUserId === meId || mySharePaise > 0;
   const [label, amount, tone] = !involved
-    ? ['not involved', null, 'text-gray-dark-2']
+    ? ['not involved', null, 'text-chalk-muted']
     : impact > 0
-      ? ['you lent', formatPaise(impact), 'text-green-text']
+      ? ['you lent', impact, 'text-positive']
       : impact < 0
-        ? ['you borrowed', formatPaise(-impact), 'text-danger']
-        : ['no balance', null, 'text-gray-dark-2'];
+        ? ['you borrowed', -impact, 'text-negative']
+        : ['no balance', null, 'text-chalk-muted'];
   return (
     <span
       className={cx(
-        'flex shrink-0 flex-col text-sm',
+        'flex shrink-0 flex-col text-lg',
         align === 'end' ? 'items-end text-right' : 'items-start',
         tone,
       )}
     >
       <span>{label}</span>
-      {amount && <span className="font-semibold">{amount}</span>}
+      {amount !== null && <Money paise={amount} className="font-semibold" />}
     </span>
   );
 }
