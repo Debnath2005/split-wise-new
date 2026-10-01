@@ -189,3 +189,21 @@ describe('settlement sentences', () => {
     expect(text(item)).toBe('Ravi deleted a payment: You paid Ravi ₹966.00 in cash in Goa');
   });
 });
+
+describe('group settings sentences', () => {
+  it.each([
+    [
+      { before: { simplify_debts: false }, after: { simplify_debts: true } },
+      'Ravi turned on Simplify debts in Goa',
+    ],
+    [
+      { before: { simplify_debts: true }, after: { simplify_debts: false } },
+      'Ravi turned off Simplify debts in Goa',
+    ],
+    [{ before: { name: 'Goa' }, after: { name: 'Goa 2026' } }, 'Ravi renamed Goa → Goa 2026'],
+  ] as const)('%j reads "%s"', (payload, expected) => {
+    expect(
+      text({ ...base, expense_id: null, type: 'group_settings_changed', payload } as ActivityItem),
+    ).toBe(expected);
+  });
+});

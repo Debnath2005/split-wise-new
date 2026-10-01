@@ -5,6 +5,7 @@ import {
   type CreateGroupRequest,
   type GroupDetail,
   type GroupSummary,
+  type UpdateGroupRequest,
 } from '@split-wise/shared';
 import type { Db, DbOrTx } from '../db/client.js';
 import { groupMembers, groups, users, type GroupRow, type UserRow } from '../db/schema.js';
@@ -161,19 +162,47 @@ export function createGroup(db: Db, actorId: number, input: CreateGroupRequest):
   });
 }
 
-export function renameGroup(db: Db, groupId: number, actorId: number, name: string): GroupDetail {
+/**
+ * Rename and/or switch simplify debts on or off (SPEC §7, §10). Only changed fields are logged as
+ * `group_settings_changed`; switching simplification never touches stored rows (ADR-0012).
+ */
+export function updateGroup(
+  db: Db,
+  groupId: number,
+  actorId: number,
+  changes: UpdateGroupRequest,
+): GroupDetail {
   return db.transaction((tx) => {
     const group = requireGroupForMember(tx, groupId, actorId);
-    if (group.name === name) return toGroupDetail(tx, group);
-    const updated = tx.update(groups).set({ name }).where(eq(groups.id, groupId)).returning().get();
+    const before: { name?: string; simplify_debts?: boolean } = {};
+    const after: { name?: string; simplify_debts?: boolean } = {};
+    if (changes.name !== undefined && changes.name !== group.name) {
+      before.name = group.name;
+      after.name = changes.name;
+    }
+    if (changes.simplify_debts !== undefined && changes.simplify_debts !== group.simplifyDebts) {
+      before.simplify_debts = group.simplifyDebts;
+      after.simplify_debts = changes.simplify_debts;
+    }
+    if (Object.keys(after).length === 0) return toGroupDetail(tx, group);
+
+    const updated = tx
+      .update(groups)
+      .set({
+        ...(after.name !== undefined && { name: after.name }),
+        ...(after.simplify_debts !== undefined && { simplifyDebts: after.simplify_debts }),
+      })
+      .where(eq(groups.id, groupId))
+      .returning()
+      .get()!;
     recordActivity(tx, {
       actorUserId: actorId,
       type: 'group_settings_changed',
       groupId,
-      payload: { before: { name: group.name }, after: { name } },
+      payload: { before, after },
       recipientIds: currentMembers(tx, groupId).map((u) => u.id),
     });
-    return toGroupDetail(tx, updated!);
+    return toGroupDetail(tx, updated);
   });
 }
 

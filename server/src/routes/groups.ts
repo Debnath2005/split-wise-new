@@ -21,7 +21,7 @@ import {
   requireGroupForMember,
   getGroup,
   listGroups,
-  renameGroup,
+  updateGroup,
 } from '../services/groups.js';
 import { groupBalances } from '../services/balances.js';
 import { listGroupExpenses } from '../services/expenses.js';
@@ -46,8 +46,12 @@ export function groupsRouter(db: Db) {
   });
 
   router.patch('/groups/:id', validateBody(UpdateGroupRequestSchema), (req, res) => {
-    const { name } = req.body as UpdateGroupRequest;
-    const group = renameGroup(db, idParam(req.params.id, 'Group'), currentUser(req).id, name);
+    const group = updateGroup(
+      db,
+      idParam(req.params.id, 'Group'),
+      currentUser(req).id,
+      req.body as UpdateGroupRequest,
+    );
     res.json({ group } satisfies GroupDetailResponse);
   });
 

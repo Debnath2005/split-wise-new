@@ -72,6 +72,8 @@ async function trip() {
       ],
     })
   ).body.group.id as number;
+  // These tests pin the raw pairwise mode (SPEC §6); simplified mode is covered in simplify.test.ts.
+  await asha.patch(`/groups/${groupId}`, { simplify_debts: false });
   const all = [asha.id, ravi.id, chitra.id].map((user_id) => ({ user_id }));
   await addExpense(asha, {
     group_id: groupId,

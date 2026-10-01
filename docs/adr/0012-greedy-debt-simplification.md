@@ -15,6 +15,8 @@ Groups build up tangled debts. Users want fewer payments to settle up.
 - The result isn't always the global minimum (that problem is NP-hard), but it's good enough and predictable.
 - Covered by property-based tests: the transfers bring every net to zero, there are ≤ n−1 of them, and all amounts are > 0.
 
+- **Amended 2026-10-01 (M7):** in a group with simplification on, the simplified transfers are also that group's *pairwise* balances. That covers friend totals and breakdowns, the summary, leave/unfriend and Settle. Without this, paying the suggested transfers would zero the group nets but leave raw pair debts on the Friends page, and members could never leave. Stored data is still never changed.
+
 ## Alternatives considered
 - **Exact minimum-transfer search**: exponential time, and the gain for small groups is small.
 - **Rewriting the ledger**: destroys the history.

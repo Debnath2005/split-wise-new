@@ -146,17 +146,34 @@ export function describeActivity(
           groupName,
         ],
       };
-    case 'group_settings_changed':
+    case 'group_settings_changed': {
+      const { before, after } = item.payload;
+      if (after.simplify_debts !== undefined && after.name === undefined) {
+        return {
+          ...none,
+          sentence: [
+            actor,
+            { text: ` turned ${after.simplify_debts ? 'on' : 'off'} ` },
+            { text: 'Simplify debts', strong: true },
+            ...inGroup,
+          ],
+        };
+      }
       return {
         ...none,
         sentence: [
           actor,
           { text: ' renamed ' },
-          { text: item.payload.before.name, strong: true },
+          { text: before.name ?? 'the group', strong: true },
           { text: ' → ' },
-          { text: item.payload.after.name, strong: true },
+          { text: after.name ?? groupName.text, strong: true },
         ],
+        changes:
+          after.simplify_debts !== undefined
+            ? [`Simplify debts ${after.simplify_debts ? 'on' : 'off'}`]
+            : [],
       };
+    }
     case 'settlement_created':
       return { ...none, sentence: paymentLine(item.payload.settlement) };
     case 'settlement_deleted':

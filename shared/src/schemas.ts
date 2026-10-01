@@ -205,7 +205,13 @@ export const CreateGroupRequestSchema = z
   .strict();
 export type CreateGroupRequest = z.infer<typeof CreateGroupRequestSchema>;
 
-export const UpdateGroupRequestSchema = z.object({ name: groupName }).strict();
+/** Rename and/or turn simplify debts on or off (SPEC §10). */
+export const UpdateGroupRequestSchema = z
+  .object({ name: groupName.optional(), simplify_debts: z.boolean().optional() })
+  .strict()
+  .refine((g) => g.name !== undefined || g.simplify_debts !== undefined, {
+    message: 'Nothing to change',
+  });
 export type UpdateGroupRequest = z.infer<typeof UpdateGroupRequestSchema>;
 
 /** Add an existing friend by id, or a person by name + email/phone. */
@@ -441,8 +447,8 @@ export const ActivityPayloadSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('group_settings_changed'),
     payload: z.object({
-      before: z.object({ name: z.string() }),
-      after: z.object({ name: z.string() }),
+      before: z.object({ name: z.string().optional(), simplify_debts: z.boolean().optional() }),
+      after: z.object({ name: z.string().optional(), simplify_debts: z.boolean().optional() }),
     }),
   }),
   z.object({

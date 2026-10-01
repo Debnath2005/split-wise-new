@@ -4,6 +4,7 @@ import {
   GroupsResponseSchema,
   type AddGroupMemberRequest,
   type CreateGroupRequest,
+  type UpdateGroupRequest,
 } from '@split-wise/shared';
 import { api } from './client';
 import { friendsKeys } from './friends';
@@ -49,12 +50,13 @@ export function useCreateGroup() {
   });
 }
 
-export function useRenameGroup(id: number) {
-  const invalidate = useInvalidateGroupsAndFriends();
+/** Rename and/or switch simplify debts (changes balances everywhere, so refresh it all). */
+export function useUpdateGroup(id: number) {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) =>
-      api('PATCH', `/groups/${id}`, { body: { name }, schema: GroupDetailResponseSchema }),
-    onSuccess: invalidate,
+    mutationFn: (body: UpdateGroupRequest) =>
+      api('PATCH', `/groups/${id}`, { body, schema: GroupDetailResponseSchema }),
+    onSuccess: () => queryClient.invalidateQueries(),
   });
 }
 

@@ -27,11 +27,12 @@ beforeEach(() => {
 
 function client() {
   const agent = request.agent(app);
-  const write = (method: 'post' | 'delete', path: string, body?: object) =>
+  const write = (method: 'post' | 'patch' | 'delete', path: string, body?: object) =>
     agent[method](`/api/v1${path}`).set('X-Requested-With', 'fetch').send(body);
   return {
     get: (path: string) => agent.get(`/api/v1${path}`),
     post: (path: string, body?: object) => write('post', path, body),
+    patch: (path: string, body: object) => write('patch', path, body),
     del: (path: string) => write('delete', path),
   };
 }
@@ -71,6 +72,8 @@ async function trip() {
       ],
     })
   ).body.group.id as number;
+  // These tests pin the raw pairwise mode (SPEC §6); simplified mode is covered in simplify.test.ts.
+  await asha.patch(`/groups/${groupId}`, { simplify_debts: false });
   const all = [asha.id, ravi.id, chitra.id].map((user_id) => ({ user_id }));
   const e1 = await addExpense(asha, {
     group_id: groupId,
@@ -280,6 +283,7 @@ describe('DELETE /groups/:id/members/me (leave)', () => {
         ],
       })
     ).body.group.id;
+    await asha.patch(`/groups/${groupId}`, { simplify_debts: false }); // the raw-mode rule
     // Asha owes Ravi 100; Chitra owes Asha 100 → Asha's net is 0 but she isn't settled.
     await addExpense(asha, {
       group_id: groupId,

@@ -228,6 +228,9 @@ owes(B→A) = Σ share(B).owed  on expenses paid by A
 - **Friends list** shows each friend's total pairwise balance across all scopes.
 - **Home dashboard**: "You owe ₹X · You are owed ₹Y" (the sum of negative and positive pairwise totals).
 
+### Pairwise balances inside a simplified group
+When a group has `simplify_debts = 1`, its **simplified transfers (§7) are that group's pairwise balances everywhere**: friend totals, the friend page's per-group breakdown, the dashboard summary, the leave/unfriend rules, and Settle. So settling the suggested payments really clears every view. Groups with simplification off, and non-group expenses, use the raw pairwise formula above.
+
 ### Group balances
 - `GET /groups/:id/balances` returns each member's `net` and a list of **suggested transfers**:
   - `simplify_debts = 1`: the output of the simplification algorithm (§7).

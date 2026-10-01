@@ -7,19 +7,20 @@ import { useMe } from '../../api/auth';
 import { useLeaveGroup } from '../../api/balances';
 import { applyServerErrors } from '../../api/formErrors';
 import { useFriends } from '../../api/friends';
-import { useAddGroupMember, useRenameGroup } from '../../api/groups';
+import { useAddGroupMember, useUpdateGroup } from '../../api/groups';
 import { Alert } from '../../components/ui/Alert';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { List, ListRow } from '../../components/ui/ListRow';
 import { Sheet } from '../../components/ui/Sheet';
+import { Switch } from '../../components/ui/Switch';
 import { TextField } from '../../components/ui/TextField';
 import { PlusIcon } from '../../components/ui/icons';
 import { PersonForm, contactOf } from '../people/PersonForm';
 
 function RenameForm({ group }: { group: GroupDetail }) {
-  const rename = useRenameGroup(group.id);
+  const rename = useUpdateGroup(group.id);
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const {
     register,
@@ -35,7 +36,7 @@ function RenameForm({ group }: { group: GroupDetail }) {
   const onSubmit = handleSubmit(async ({ name }) => {
     setNotice(null);
     try {
-      const { group: saved } = await rename.mutateAsync(name);
+      const { group: saved } = await rename.mutateAsync({ name });
       reset({ name: saved.name });
       setNotice({ tone: 'success', text: 'Saved' });
     } catch (err) {
@@ -57,6 +58,23 @@ function RenameForm({ group }: { group: GroupDetail }) {
         Save name
       </Button>
     </form>
+  );
+}
+
+/** SPEC §7: on by default; changes only the suggestions, never stored expenses. */
+function SimplifySwitch({ group }: { group: GroupDetail }) {
+  const update = useUpdateGroup(group.id);
+  return (
+    <section className="flex flex-col gap-2">
+      <Switch
+        label="Simplify debts"
+        description="Simplified so fewer payments are needed. Expenses don't change."
+        checked={update.isPending ? !group.simplify_debts : group.simplify_debts}
+        disabled={update.isPending}
+        onChange={(on) => update.mutate({ simplify_debts: on })}
+      />
+      {update.isError && <Alert tone="error">{update.error.message}</Alert>}
+    </section>
   );
 }
 
@@ -183,6 +201,7 @@ export function GroupSettingsSheet({
       {open && view === 'main' && (
         <div className="flex flex-col gap-8">
           <RenameForm group={group} />
+          <SimplifySwitch group={group} />
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-base font-semibold">Members ({group.members.length})</h3>
