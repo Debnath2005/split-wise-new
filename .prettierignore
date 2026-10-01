@@ -1,0 +1,5 @@
+dist/
+coverage/
+server/src/db/migrations/meta/
+package-lock.json
+*.md
