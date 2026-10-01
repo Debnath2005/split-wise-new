@@ -50,7 +50,7 @@
 | Backend | Node.js 22 LTS (`.nvmrc`), Express 4, TypeScript (`tsx` for dev, `tsc` for build) |
 | DB | SQLite (WAL mode) via better-sqlite3 + Drizzle ORM + drizzle-kit migrations. better-sqlite3 is pinned to 12.x through root `overrides`, because the 13.x prebuilt binary segfaults on Ubuntu 22.04 / Node 22.13 |
 | Validation | Zod schemas in `shared/`, used by both client forms and server request validation |
-| Auth | `argon2` (or `bcrypt` if native builds cause trouble), session table, `cookie-parser` |
+| Auth | `argon2` (or `bcrypt` if native builds cause trouble), session table, `cookie-parser`. argon2 is pinned to `0.44.0`, because the 0.45.x prebuilt binary segfaults on Node 22.13 (the same issue as better-sqlite3 13.x) |
 | Security middleware | `helmet`, `express-rate-limit`, CORS locked to the client origin in dev (same origin in prod) |
 | QR code | `qrcode` (client side) for the UPI link on desktop |
 | Testing | Vitest (unit tests for shared and server), Supertest (API), Playwright (mobile-viewport E2E smoke tests) |
@@ -381,7 +381,7 @@ Authorization rule (enforced in services, not routes): a user can read or modify
 ## 12. Security & Non-Functional
 
 - Passwords: argon2id (or bcrypt cost 12). Minimum 8 characters.
-- Session cookie: `httpOnly`, `Secure` (prod), `SameSite=Lax`, 30-day sliding expiry. The session id is stored hashed.
+- Session cookie: `httpOnly`, `Secure` (on by default in production, can be overridden with `COOKIE_SECURE=false` for plain-HTTP LAN testing), `SameSite=Lax`, 30-day sliding expiry (extended at most once an hour). The session id is stored hashed.
 - CSRF: SameSite=Lax plus a required `X-Requested-With: fetch` header on mutating requests (checked by middleware).
 - Rate limits: auth endpoints 5/min, general API 120/min per session.
 - `helmet` with a CSP that allows `self`. The QR code is generated client side (no external calls).
@@ -423,7 +423,8 @@ Each milestone ends with something that runs and has passing tests. "DoD" means 
 ### M1: Money core + Auth (1–1.5 days)
 - `shared/src/lib/money/money.ts` and `shared/src/lib/money/split.ts` with full unit tests (built first, because everything later depends on them).
 - `users` and `sessions` tables. Signup, login, logout and me. Auth middleware. Rate limits.
-- Client: login/signup screens, protected routes, the app shell with the bottom tab bar, the Account screen (name and UPI ID).
+- Client: login/signup screens, protected routes, the app shell with the bottom tab bar, the Account screen (name, phone, UPI ID, change password, logout).
+- `PATCH /me` (name, phone, UPI ID) and `POST /me/password`.
 - **DoD**: a user can sign up, log in, refresh and stay logged in, log out, and save a UPI ID. Money/split tests are green.
 
 ### M2: Friends, Groups & Placeholders (1.5 days)
@@ -463,7 +464,7 @@ Each milestone ends with something that runs and has passing tests. "DoD" means 
 ### M8: Polish, Hardening & Deploy (1–1.5 days)
 - Empty states, skeletons, error toasts, 404 page, accessibility pass, Lighthouse targets.
 - Playwright E2E happy path at a mobile viewport in CI.
-- Production build: Express serves `client/dist`. Dockerfile. Persistent volume for the SQLite file. Daily backup script. Env config (`SESSION_SECRET`, `DATABASE_PATH`, `NODE_ENV`).
+- Production build: Express serves `client/dist`. Dockerfile. Persistent volume for the SQLite file. Daily backup script. Env config (`DATABASE_PATH`, `NODE_ENV`, `PORT`, `COOKIE_SECURE`). No session secret is needed, because session ids are random and stored hashed.
 - Stretch: PWA manifest + icons (installable, no offline mode).
 - **DoD**: deployed to a single VPS or Fly.io/Railway with a volume, the E2E suite is green, and a backup/restore has been tried once.
 
