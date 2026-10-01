@@ -121,7 +121,11 @@ export const PersonSchema = z.object({
 });
 export type Person = z.infer<typeof PersonSchema>;
 
-export const FriendsResponseSchema = z.object({ friends: z.array(PersonSchema) });
+/** A friend with your total pairwise balance across all groups and non-group (positive = they owe you). */
+export const FriendSchema = PersonSchema.extend({ balance_paise: z.number().int() });
+export type Friend = z.infer<typeof FriendSchema>;
+
+export const FriendsResponseSchema = z.object({ friends: z.array(FriendSchema) });
 export type FriendsResponse = z.infer<typeof FriendsResponseSchema>;
 
 export const AddFriendResponseSchema = z.object({ friend: PersonSchema });
@@ -137,6 +141,8 @@ export const GroupSummarySchema = z.object({
   id: z.number().int(),
   name: z.string(),
   member_count: z.number().int(),
+  /** Your net in this group (positive = the group owes you). */
+  my_net_paise: z.number().int(),
 });
 export type GroupSummary = z.infer<typeof GroupSummarySchema>;
 
@@ -146,6 +152,17 @@ export type GroupsResponse = z.infer<typeof GroupsResponseSchema>;
 export const FriendDetailResponseSchema = z.object({
   friend: PersonSchema,
   shared_groups: z.array(GroupSummarySchema),
+  /** Pairwise balance with this friend (positive = they owe you), total and per scope (SPEC §6). */
+  balance: z.object({
+    total_paise: z.number().int(),
+    /** One entry per scope with any shared expense; `group: null` is non-group. */
+    by_scope: z.array(
+      z.object({
+        group: z.object({ id: z.number().int(), name: z.string() }).nullable(),
+        balance_paise: z.number().int(),
+      }),
+    ),
+  }),
 });
 export type FriendDetailResponse = z.infer<typeof FriendDetailResponseSchema>;
 
@@ -290,3 +307,23 @@ export type ExpensePage = z.infer<typeof ExpensePageSchema>;
 
 /** Cursor for expense lists: "<expense_date>.<id>" of the last item seen. */
 export const EXPENSE_CURSOR_PATTERN = /^\d{4}-\d{2}-\d{2}\.\d+$/;
+
+// ── Balances (SPEC §6, §10) ─────────────────────────────────────────────────
+
+export const GroupBalancesResponseSchema = z.object({
+  /** Every member, plus any former member who still appears in the group's expenses. */
+  members: z.array(z.object({ user: PersonRefSchema, net_paise: z.number().int() })),
+  /** Who pays whom. Raw pairwise debts netted per pair until simplify debts (M7). */
+  transfers: z.array(
+    z.object({ from: PersonRefSchema, to: PersonRefSchema, amount_paise: z.number().int() }),
+  ),
+  simplified: z.boolean(),
+});
+export type GroupBalancesResponse = z.infer<typeof GroupBalancesResponseSchema>;
+
+export const BalanceSummaryResponseSchema = z.object({
+  owe_paise: z.number().int(),
+  owed_paise: z.number().int(),
+  net_paise: z.number().int(),
+});
+export type BalanceSummaryResponse = z.infer<typeof BalanceSummaryResponseSchema>;

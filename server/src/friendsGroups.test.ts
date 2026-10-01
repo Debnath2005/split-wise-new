@@ -166,7 +166,7 @@ describe('GET /friends/:userId', () => {
     const detail = FriendDetailResponseSchema.parse(res.body);
     expect(detail.friend.name).toBe('Ravi');
     expect(detail.shared_groups).toEqual([
-      { id: expect.any(Number), name: 'Goa', member_count: 2 },
+      { id: expect.any(Number), name: 'Goa', member_count: 2, my_net_paise: 0 },
     ]);
   });
 

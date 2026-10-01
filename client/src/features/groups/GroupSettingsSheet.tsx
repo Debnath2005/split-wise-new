@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { UpdateGroupRequestSchema, type GroupDetail } from '@split-wise/shared';
 import { useMe } from '../../api/auth';
+import { useLeaveGroup } from '../../api/balances';
 import { applyServerErrors } from '../../api/formErrors';
 import { useFriends } from '../../api/friends';
 import { useAddGroupMember, useRenameGroup } from '../../api/groups';
@@ -123,6 +125,27 @@ function AddMemberView({ group, onDone }: { group: GroupDetail; onDone: () => vo
   );
 }
 
+/** Confirm leaving; the server refuses (409) until every balance you have in the group is 0. */
+function LeaveView({ group, onLeft }: { group: GroupDetail; onLeft: () => void }) {
+  const leave = useLeaveGroup(group.id);
+  return (
+    <div className="flex flex-col gap-4">
+      <p>
+        You'll lose access to {group.name} and its expenses. You can only leave once you're settled
+        up with everyone in the group.
+      </p>
+      {leave.isError && <Alert tone="error">{leave.error.message}</Alert>}
+      <Button
+        fullWidth
+        loading={leave.isPending}
+        onClick={() => leave.mutate(undefined, { onSuccess: onLeft })}
+      >
+        Leave {group.name}
+      </Button>
+    </div>
+  );
+}
+
 export function GroupSettingsSheet({
   group,
   open,
@@ -133,7 +156,8 @@ export function GroupSettingsSheet({
   onClose: () => void;
 }) {
   const { data: me } = useMe();
-  const [view, setView] = useState<'main' | 'add'>('main');
+  const [view, setView] = useState<'main' | 'add' | 'leave'>('main');
+  const navigate = useNavigate();
   const close = () => {
     setView('main');
     onClose();
@@ -143,10 +167,19 @@ export function GroupSettingsSheet({
     <Sheet
       open={open}
       onClose={close}
-      title={view === 'add' ? 'Add member' : 'Group settings'}
+      title={view === 'add' ? 'Add member' : view === 'leave' ? 'Leave group?' : 'Group settings'}
       variant="full"
     >
       {open && view === 'add' && <AddMemberView group={group} onDone={() => setView('main')} />}
+      {open && view === 'leave' && (
+        <LeaveView
+          group={group}
+          onLeft={() => {
+            close();
+            navigate('/groups', { replace: true });
+          }}
+        />
+      )}
       {open && view === 'main' && (
         <div className="flex flex-col gap-8">
           <RenameForm group={group} />
@@ -176,6 +209,9 @@ export function GroupSettingsSheet({
               ))}
             </List>
           </section>
+          <Button variant="secondary" onClick={() => setView('leave')}>
+            Leave group
+          </Button>
         </div>
       )}
     </Sheet>

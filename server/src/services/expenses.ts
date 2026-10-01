@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, or, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import {
   computeSplit,
@@ -23,6 +23,7 @@ import { HttpError, fieldError } from '../errors.js';
 import { recordActivity } from './activity.js';
 import { areFriends } from './friends.js';
 import { requireGroupForMember } from './groups.js';
+import { involves } from './sqlFragments.js';
 
 const notFound = () => new HttpError(404, 'NOT_FOUND', 'Expense not found');
 
@@ -235,18 +236,6 @@ export interface PageOptions {
 const payer = alias(users, 'payer');
 const myShare = alias(expenseShares, 'my_share');
 
-/** Is `userId` the payer of, or a participant in, the outer `expenses` row? */
-const involves = (db: DbOrTx, userId: number) =>
-  or(
-    eq(expenses.paidByUserId, userId),
-    exists(
-      db
-        .select({ one: sql`1` })
-        .from(expenseShares)
-        .where(and(eq(expenseShares.expenseId, expenses.id), eq(expenseShares.userId, userId))),
-    ),
-  );
-
 /** Newest first by expense date, then id; keyset-paginated. Deleted expenses are excluded. */
 function listExpenses(
   db: DbOrTx,
@@ -311,5 +300,16 @@ export function listFriendExpenses(
   options: PageOptions,
 ): ExpensePage {
   if (!areFriends(db, actorId, friendId)) throw new HttpError(404, 'NOT_FOUND', 'Friend not found');
-  return listExpenses(db, actorId, and(involves(db, actorId), involves(db, friendId))!, options);
+  // Former members lose access to a group's expenses (SPEC §10), so leave those out.
+  const myGroups = db
+    .select({ id: groupMembers.groupId })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.userId, actorId), isNull(groupMembers.leftAt)));
+  const visible = or(isNull(expenses.groupId), inArray(expenses.groupId, myGroups));
+  return listExpenses(
+    db,
+    actorId,
+    and(involves(db, actorId), involves(db, friendId), visible)!,
+    options,
+  );
 }

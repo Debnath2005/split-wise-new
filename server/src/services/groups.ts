@@ -10,6 +10,7 @@ import type { Db, DbOrTx } from '../db/client.js';
 import { groupMembers, groups, users, type GroupRow, type UserRow } from '../db/schema.js';
 import { HttpError, fieldError } from '../errors.js';
 import { recordActivity } from './activity.js';
+import { myNetsInGroups, pairwiseInGroup } from './balances.js';
 import { areFriends, ensureFriendship } from './friends.js';
 import { findOrCreatePerson, findUserById, toPersonDto } from './people.js';
 import { memberCountSql } from './sqlFragments.js';
@@ -79,8 +80,9 @@ function joinGroup(tx: DbOrTx, groupId: number, newMemberIds: number[]): void {
   for (const a of newMemberIds) for (const b of everyone) ensureFriendship(tx, a, b);
 }
 
+/** Your groups, each with your net in it (SPEC §10 "my groups with my net in each"). */
 export function listGroups(db: Db, userId: number): GroupSummary[] {
-  return db
+  const rows = db
     .select({ id: groups.id, name: groups.name, member_count: memberCountSql })
     .from(groups)
     .innerJoin(
@@ -90,6 +92,39 @@ export function listGroups(db: Db, userId: number): GroupSummary[] {
     .where(and(isNull(groupMembers.leftAt), isNull(groups.archivedAt)))
     .orderBy(desc(groups.createdAt), desc(groups.id))
     .all();
+  const nets = myNetsInGroups(
+    db,
+    userId,
+    rows.map((g) => g.id),
+  );
+  return rows.map((g) => ({ ...g, my_net_paise: nets.get(g.id) ?? 0 }));
+}
+
+/**
+ * Leave a group (SPEC §10): only when every pairwise balance you have inside it is 0, so no debt
+ * is stranded. Logs `member_left` for everyone, including the leaver (ADR-0011).
+ */
+export function leaveGroup(db: Db, groupId: number, actorId: number): void {
+  db.transaction((tx) => {
+    requireGroupForMember(tx, groupId, actorId);
+    const open = [...pairwiseInGroup(tx, actorId, groupId).values()].some((b) => b !== 0);
+    if (open) {
+      throw new HttpError(409, 'CONFLICT', 'Settle up with everyone in this group before leaving.');
+    }
+    const members = currentMembers(tx, groupId);
+    const me = members.find((m) => m.id === actorId)!;
+    tx.update(groupMembers)
+      .set({ leftAt: Date.now() })
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, actorId)))
+      .run();
+    recordActivity(tx, {
+      actorUserId: actorId,
+      type: 'member_left',
+      groupId,
+      payload: { member: { id: me.id, name: me.name } },
+      recipientIds: members.map((m) => m.id),
+    });
+  });
 }
 
 export function getGroup(db: Db, groupId: number, userId: number): GroupDetail {

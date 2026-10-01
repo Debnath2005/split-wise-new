@@ -313,7 +313,7 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 | POST | `/friends` | `{name, email?, phone?}` → existing user or new placeholder; creates friendship |
 | GET | `/friends/:userId` | friend profile, shared groups, and (from M4) pairwise breakdown per group + non-group |
 | GET | `/friends/:userId/expenses?before=&limit=` | expenses involving both of you (group and non-group), newest first, cursor-paginated |
-| DELETE | `/friends/:userId` | only if the balance is 0 |
+| DELETE | `/friends/:userId` | only if your total balance with them is 0 **and** you share no current group (group members are always friends) |
 
 **Groups**
 | GET | `/groups` | my groups with my net in each |
@@ -321,7 +321,7 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 | GET | `/groups/:id` | group detail + members |
 | PATCH | `/groups/:id` | `{name?, simplify_debts?}` |
 | POST | `/groups/:id/members` | add an existing friend or a new placeholder |
-| DELETE | `/groups/:id/members/me` | leave; blocked if my group net ≠ 0 |
+| DELETE | `/groups/:id/members/me` | leave; blocked unless **every** pairwise balance you have with members of this group is 0 (stricter than net = 0, so no debts are stranded). Former members lose access to the group and its expenses |
 | GET | `/groups/:id/balances` | nets + suggested transfers |
 | GET | `/groups/:id/expenses` | paginated, includes settlements interleaved by date |
 
@@ -445,7 +445,7 @@ Each milestone ends with something that runs and has passing tests. "DoD" means 
 ### M4: Balances (1 day)
 - Balance service: nets, pairwise, dashboard summary. Group balances endpoint (no simplification yet, raw pairwise).
 - UI: friends list chips, friend detail breakdown, group balances tab, home summary header.
-- Unfriend (`DELETE /friends/:userId`) and leave group (`DELETE /groups/:id/members/me`), both blocked unless the balance is 0.
+- Unfriend (`DELETE /friends/:userId`) and leave group (`DELETE /groups/:id/members/me`), both blocked unless the relevant balances are 0 (see §10).
 - **DoD**: fixture tests match hand calculations, Σ net = 0 holds, and the UI numbers match the API.
 
 ### M5: Edit/Delete + Activity Feed (1.5 days)
