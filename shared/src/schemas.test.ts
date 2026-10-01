@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
   HealthResponseSchema,
+  CreateExpenseRequestSchema,
   CreateGroupRequestSchema,
+  ExpenseDateSchema,
   PersonInputSchema,
   SignupRequestSchema,
   UpdateMeRequestSchema,
@@ -122,5 +124,59 @@ describe('SignupRequestSchema phone', () => {
     expect(SignupRequestSchema.parse({ ...base, phone: '+91 98765 43210' }).phone).toBe(
       '+919876543210',
     );
+  });
+});
+
+describe('ExpenseDateSchema', () => {
+  it.each(['2026-10-01', '2028-02-29', '2000-01-01', '2100-12-31'])('accepts %s', (d) => {
+    expect(ExpenseDateSchema.safeParse(d).success).toBe(true);
+  });
+
+  it.each([
+    '2026-02-29',
+    '2026-02-30',
+    '2026-13-01',
+    '1999-12-31',
+    '2101-01-01',
+    '2026-1-5',
+    '01-10-2026',
+    '',
+  ])('rejects %j', (d) => {
+    expect(ExpenseDateSchema.safeParse(d).success).toBe(false);
+  });
+});
+
+describe('CreateExpenseRequestSchema', () => {
+  const base = {
+    description: ' Dinner ',
+    amount_paise: 10000,
+    paid_by_user_id: 1,
+    split_type: 'equal',
+    participants: [{ user_id: 1 }, { user_id: 2 }],
+    expense_date: '2026-10-01',
+  };
+
+  it('trims the description and treats blank notes as none', () => {
+    expect(CreateExpenseRequestSchema.parse({ ...base, notes: '  ' })).toMatchObject({
+      description: 'Dinner',
+      notes: null,
+    });
+  });
+
+  it('never accepts shares from the client', () => {
+    const withShares = { ...base, participants: [{ user_id: 1, owed_paise: 10000 }] };
+    expect(CreateExpenseRequestSchema.safeParse(withShares).success).toBe(false);
+  });
+
+  it('requires integer paise within range', () => {
+    for (const amount_paise of [0, 12.5, 100_000_001]) {
+      expect(CreateExpenseRequestSchema.safeParse({ ...base, amount_paise }).success).toBe(false);
+    }
+  });
+
+  it('rejects a description over 100 characters', () => {
+    expect(
+      CreateExpenseRequestSchema.safeParse({ ...base, description: 'x'.repeat(101) }).success,
+    ).toBe(false);
   });
 });

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { MAX_AMOUNT_PAISE } from './lib/money/money.js';
+import { SPLIT_TYPES } from './lib/money/split.js';
 
 /** Error envelope for every non-2xx API response (SPEC §10). */
 export const ApiErrorSchema = z.object({
@@ -185,3 +187,106 @@ export const AddGroupMemberRequestSchema = z.union([
   PersonInputSchema,
 ]);
 export type AddGroupMemberRequest = z.infer<typeof AddGroupMemberRequestSchema>;
+
+// ── Expenses (SPEC §4.1, §5, §10) ───────────────────────────────────────────
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A real calendar date "YYYY-MM-DD" between 2000 and 2100. */
+export const ExpenseDateSchema = z.string().refine(
+  (value) => {
+    const m = ISO_DATE.exec(value);
+    if (!m) return false;
+    const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    if (y < 2000 || y > 2100) return false;
+    const date = new Date(Date.UTC(y, mo - 1, d));
+    return date.getUTCFullYear() === y && date.getUTCMonth() === mo - 1 && date.getUTCDate() === d;
+  },
+  { message: 'Enter a valid date' },
+);
+
+export const CreateExpenseRequestSchema = z
+  .object({
+    /** Omit or null for a non-group expense between friends. */
+    group_id: userId.nullable().optional(),
+    description: z
+      .string()
+      .trim()
+      .min(1, 'Enter a description')
+      .max(100, 'Keep it under 100 characters'),
+    amount_paise: z
+      .number()
+      .int()
+      .min(1, 'Enter an amount')
+      .max(MAX_AMOUNT_PAISE, 'Amount is too large'),
+    paid_by_user_id: userId,
+    split_type: z.enum(SPLIT_TYPES),
+    /** `value` is paise (exact) or basis points (percent); omitted for equal. Shares are computed server-side. */
+    participants: z
+      .array(z.object({ user_id: userId, value: z.number().int().min(0).optional() }).strict())
+      .min(1, 'Pick at least one person')
+      .max(MAX_GROUP_MEMBERS),
+    expense_date: ExpenseDateSchema,
+    notes: clearable(z.string().trim().max(500, 'Keep notes under 500 characters')).optional(),
+  })
+  .strict();
+export type CreateExpenseRequest = z.infer<typeof CreateExpenseRequestSchema>;
+
+/** Minimal person reference inside expenses. */
+export const PersonRefSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  is_placeholder: z.boolean(),
+});
+export type PersonRef = z.infer<typeof PersonRefSchema>;
+
+const GroupRefSchema = z.object({ id: z.number().int(), name: z.string() }).nullable();
+
+export const ExpenseDetailSchema = z.object({
+  id: z.number().int(),
+  group: GroupRefSchema,
+  description: z.string(),
+  amount_paise: z.number().int(),
+  currency: z.literal('INR'),
+  split_type: z.enum(SPLIT_TYPES),
+  expense_date: z.string(),
+  notes: z.string().nullable(),
+  paid_by: PersonRefSchema,
+  created_by: PersonRefSchema,
+  created_at: z.number().int(),
+  version: z.number().int(),
+  shares: z.array(
+    z.object({
+      user: PersonRefSchema,
+      owed_paise: z.number().int(),
+      input_value: z.number().int().nullable(),
+    }),
+  ),
+});
+export type ExpenseDetail = z.infer<typeof ExpenseDetailSchema>;
+
+export const ExpenseResponseSchema = z.object({ expense: ExpenseDetailSchema });
+export type ExpenseResponse = z.infer<typeof ExpenseResponseSchema>;
+
+export const ExpenseListItemSchema = z.object({
+  id: z.number().int(),
+  group: GroupRefSchema,
+  description: z.string(),
+  amount_paise: z.number().int(),
+  expense_date: z.string(),
+  split_type: z.enum(SPLIT_TYPES),
+  paid_by: PersonRefSchema,
+  /** The viewer's owed share; 0 when they aren't a participant. */
+  my_share_paise: z.number().int(),
+});
+export type ExpenseListItem = z.infer<typeof ExpenseListItemSchema>;
+
+export const ExpensePageSchema = z.object({
+  expenses: z.array(ExpenseListItemSchema),
+  /** Pass as `before` to get the next (older) page; null when there are no more. */
+  next_cursor: z.string().nullable(),
+});
+export type ExpensePage = z.infer<typeof ExpensePageSchema>;
+
+/** Cursor for expense lists: "<expense_date>.<id>" of the last item seen. */
+export const EXPENSE_CURSOR_PATTERN = /^\d{4}-\d{2}-\d{2}\.\d+$/;

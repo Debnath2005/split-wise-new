@@ -311,7 +311,8 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 **Friends**
 | GET | `/friends` | list with total pairwise balance |
 | POST | `/friends` | `{name, email?, phone?}` → existing user or new placeholder; creates friendship |
-| GET | `/friends/:userId` | pairwise breakdown per group + non-group, plus shared expenses (paginated) |
+| GET | `/friends/:userId` | friend profile, shared groups, and (from M4) pairwise breakdown per group + non-group |
+| GET | `/friends/:userId/expenses?before=&limit=` | expenses involving both of you (group and non-group), newest first, cursor-paginated |
 | DELETE | `/friends/:userId` | only if the balance is 0 |
 
 **Groups**
@@ -349,7 +350,7 @@ Authorization rule (enforced in services, not routes): a user can read or modify
 
 ### Navigation
 - A **bottom tab bar** (fixed, with safe-area padding): **Friends · Groups · Activity · Account**.
-- A **floating "+ Add expense" button** on the Friends, Groups and group-detail screens, sitting above the tab bar.
+- A **floating "+ Add expense" button** on the Friends, Groups, group-detail and friend-detail screens, sitting above the tab bar. On a group or friend page the sheet opens pre-filled with that group or friend.
 - On ≥ 768px: the tab bar becomes a left sidebar and the content is capped at `max-w-2xl`.
 
 ### Screens
@@ -364,9 +365,10 @@ Authorization rule (enforced in services, not routes): a user can read or modify
    - Date (defaults to today), optional notes.
    - Choose a group or friends at the top (pre-filled from context).
 7. **Settle up** (bottom sheet): payer → payee, amount, a UPI button / QR, and a "Record cash payment" link.
-8. **Expense detail**: who paid, each person's share, an edit/delete menu, and this expense's history (from activities).
-9. **Activity**: the feed described in §9.
-10. **Account**: name, email, phone, **UPI ID**, change password, logout.
+8. **Expense lists** (group Expenses tab, friend detail): date, description, "X paid ₹Y", and the viewer's impact for that expense: *you lent ₹A* (green) / *you borrowed ₹B* (red) / *not involved* (grey), computed in `shared/src/lib/money`.
+9. **Expense detail**: who paid, each person's share, an edit/delete menu, and this expense's history (from activities).
+10. **Activity**: the feed described in §9.
+11. **Account**: name, email, phone, **UPI ID**, change password, logout.
 
 ### Mobile requirements
 - Tap targets ≥ 44×44px. Body text ≥ 16px, so iOS doesn't zoom into inputs.

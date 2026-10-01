@@ -1,5 +1,6 @@
 // Drizzle table definitions (SPEC §5). Tables are added milestone by milestone.
 import { sql } from 'drizzle-orm';
+import { SPLIT_TYPES } from '@split-wise/shared';
 import {
   type AnySQLiteColumn,
   check,
@@ -126,7 +127,7 @@ export const ACTIVITY_TYPES = [
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
-/** SPEC §5 / ADR-0011. expense_id and settlement_id columns are added with their tables (M3, M6). */
+/** SPEC §5 / ADR-0011. settlement_id is added with its table (M6). */
 export const activities = sqliteTable('activities', {
   id: integer('id').primaryKey(),
   actorUserId: integer('actor_user_id')
@@ -134,6 +135,7 @@ export const activities = sqliteTable('activities', {
     .references(() => users.id),
   type: text('type', { enum: ACTIVITY_TYPES }).notNull(),
   groupId: integer('group_id').references(() => groups.id),
+  expenseId: integer('expense_id').references((): AnySQLiteColumn => expenses.id),
   /** JSON snapshot: {before, after} for updates, {before} for deletes. */
   payload: text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
   createdAt: createdAt(),
@@ -158,3 +160,61 @@ export const activityRecipients = sqliteTable(
 );
 
 export type GroupRow = typeof groups.$inferSelect;
+
+/** SPEC §5. Amounts in integer paise (ADR-0002); exactly one payer (ADR-0007). */
+export const expenses = sqliteTable(
+  'expenses',
+  {
+    id: integer('id').primaryKey(),
+    /** NULL ⇒ non-group expense between friends. */
+    groupId: integer('group_id').references(() => groups.id),
+    description: text('description').notNull(),
+    amountPaise: integer('amount_paise').notNull(),
+    currency: text('currency').notNull().default('INR'),
+    paidByUserId: integer('paid_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    splitType: text('split_type', { enum: SPLIT_TYPES }).notNull(),
+    /** YYYY-MM-DD */
+    expenseDate: text('expense_date').notNull(),
+    notes: text('notes'),
+    createdByUserId: integer('created_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    updatedByUserId: integer('updated_by_user_id').references(() => users.id),
+    updatedAt: integer('updated_at'),
+    deletedAt: integer('deleted_at'),
+    deletedByUserId: integer('deleted_by_user_id').references(() => users.id),
+    /** Optimistic concurrency for edits (M5, ADR-0009). */
+    version: integer('version').notNull().default(1),
+  },
+  (t) => [
+    check('expenses_amount_check', sql`${t.amountPaise} > 0`),
+    check('expenses_split_type_check', sql`${t.splitType} IN ('equal', 'exact', 'percent')`),
+    index('expenses_group_deleted_idx').on(t.groupId, t.deletedAt),
+  ],
+);
+
+export const expenseShares = sqliteTable(
+  'expense_shares',
+  {
+    id: integer('id').primaryKey(),
+    expenseId: integer('expense_id')
+      .notNull()
+      .references(() => expenses.id, { onDelete: 'cascade' }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    owedPaise: integer('owed_paise').notNull(),
+    /** exact: paise; percent: basis points; equal: NULL (ADR-0008). */
+    inputValue: integer('input_value'),
+  },
+  (t) => [
+    check('expense_shares_owed_check', sql`${t.owedPaise} >= 0`),
+    uniqueIndex('expense_shares_expense_user_unique').on(t.expenseId, t.userId),
+    index('expense_shares_user_id_idx').on(t.userId),
+  ],
+);
+
+export type ExpenseRow = typeof expenses.$inferSelect;

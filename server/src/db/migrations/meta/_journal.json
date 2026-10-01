@@ -22,6 +22,13 @@
       "when": 1790848023207,
       "tag": "0002_friends_groups_activities",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790849314156,
+      "tag": "0003_expenses",
+      "breakpoints": true
     }
   ]
 }

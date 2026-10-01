@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   PersonInputSchema,
   type AddFriendResponse,
+  type ExpensePage,
   type FriendDetailResponse,
   type FriendsResponse,
   type PersonInput,
@@ -10,7 +11,8 @@ import type { Db } from '../db/client.js';
 import { currentUser, requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { addFriend, getFriendDetail, listFriends } from '../services/friends.js';
-import { idParam } from './params.js';
+import { listFriendExpenses } from '../services/expenses.js';
+import { idParam, pageQuery } from './params.js';
 
 export function friendsRouter(db: Db) {
   const router = Router();
@@ -29,6 +31,16 @@ export function friendsRouter(db: Db) {
   router.get('/friends/:userId', (req, res) => {
     const friendId = idParam(req.params.userId, 'Friend');
     res.json(getFriendDetail(db, currentUser(req).id, friendId) satisfies FriendDetailResponse);
+  });
+
+  router.get('/friends/:userId/expenses', (req, res) => {
+    const page = listFriendExpenses(
+      db,
+      currentUser(req).id,
+      idParam(req.params.userId, 'Friend'),
+      pageQuery(req.query),
+    );
+    res.json(page satisfies ExpensePage);
   });
 
   return router;

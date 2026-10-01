@@ -9,13 +9,16 @@ import { List, ListRow } from '../../components/ui/ListRow';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Sheet } from '../../components/ui/Sheet';
 import { PageSpinner } from '../../components/ui/Spinner';
+import { Fab } from '../../components/ui/Fab';
 import { PlusIcon } from '../../components/ui/icons';
+import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
 import { PersonForm, contactOf } from '../people/PersonForm';
 
 export function FriendsPage() {
   const friends = useFriends();
   const addFriend = useAddFriend();
   const [adding, setAdding] = useState(false);
+  const [addingExpense, setAddingExpense] = useState(false);
 
   return (
     <>
@@ -74,6 +77,8 @@ export function FriendsPage() {
           />
         )}
       </Sheet>
+      <Fab onClick={() => setAddingExpense(true)}>Add expense</Fab>
+      <AddExpenseSheet open={addingExpense} onClose={() => setAddingExpense(false)} />
     </>
   );
 }

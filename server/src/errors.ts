@@ -7,6 +7,7 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'RATE_LIMITED'
+  | 'SPLIT_SUM_MISMATCH'
   | 'INTERNAL';
 
 /** Throw from routes/services; the error middleware turns it into the SPEC §10 envelope. */

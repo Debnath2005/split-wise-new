@@ -3,6 +3,7 @@ import { AccountPage } from '../features/account/AccountPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SignupPage } from '../features/auth/SignupPage';
 import { ComingSoonPage } from '../features/comingSoon/ComingSoonPage';
+import { ExpenseDetailPage } from '../features/expenses/ExpenseDetailPage';
 import { FriendDetailPage } from '../features/friends/FriendDetailPage';
 import { FriendsPage } from '../features/friends/FriendsPage';
 import { GroupDetailPage } from '../features/groups/GroupDetailPage';
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: '/friends/:userId', element: <FriendDetailPage /> },
           { path: '/groups', element: <GroupsPage /> },
           { path: '/groups/:groupId', element: <GroupDetailPage /> },
+          { path: '/expenses/:expenseId', element: <ExpenseDetailPage /> },
           { path: '/activity', element: <ComingSoonPage title="Activity" milestone="M5" /> },
           { path: '/account', element: <AccountPage /> },
         ],

@@ -12,6 +12,7 @@ import {
   type RateLimits,
 } from './middleware/rateLimit.js';
 import { authRouter } from './routes/auth.js';
+import { expensesRouter } from './routes/expenses.js';
 import { friendsRouter } from './routes/friends.js';
 import { groupsRouter } from './routes/groups.js';
 import { healthRouter } from './routes/health.js';
@@ -52,6 +53,7 @@ export function createApp({
   api.use(meRouter(db));
   api.use(friendsRouter(db));
   api.use(groupsRouter(db));
+  api.use(expensesRouter(db));
   api.use((_req, res) => {
     res.status(404).json(errorBody('NOT_FOUND', 'Route not found'));
   });

@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { useParams } from 'react-router';
+import { useMe } from '../../api/auth';
+import { useFriendExpenses } from '../../api/expenses';
 import { useFriend } from '../../api/friends';
 import { Alert } from '../../components/ui/Alert';
 import { Avatar } from '../../components/ui/Avatar';
@@ -7,12 +10,18 @@ import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { List, ListRow } from '../../components/ui/ListRow';
+import { Fab } from '../../components/ui/Fab';
 import { PageSpinner } from '../../components/ui/Spinner';
+import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
+import { ExpenseList } from '../expenses/ExpenseList';
 import { contactOf } from '../people/PersonForm';
 
 export function FriendDetailPage() {
   const id = Number(useParams().userId);
   const query = useFriend(id);
+  const expenses = useFriendExpenses(id);
+  const { data: me } = useMe();
+  const [adding, setAdding] = useState(false);
 
   if (query.isPending) return <PageSpinner />;
   if (query.isError) {
@@ -66,10 +75,18 @@ export function FriendDetailPage() {
           )}
         </section>
 
-        <EmptyState title="No expenses yet">
-          Expenses and balances with {friend.name} arrive in M3–M4.
-        </EmptyState>
+        <section>
+          <h2 className="mb-2 text-xl/tight font-semibold">Expenses</h2>
+          <ExpenseList
+            query={expenses}
+            meId={me?.id ?? 0}
+            showGroup
+            emptyText={`Nothing shared with ${friend.name} yet.`}
+          />
+        </section>
       </div>
+      <Fab onClick={() => setAdding(true)}>Add expense</Fab>
+      <AddExpenseSheet open={adding} onClose={() => setAdding(false)} context={{ friendId: id }} />
     </>
   );
 }

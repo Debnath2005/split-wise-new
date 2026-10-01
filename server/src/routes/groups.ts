@@ -5,6 +5,7 @@ import {
   UpdateGroupRequestSchema,
   type AddGroupMemberRequest,
   type CreateGroupRequest,
+  type ExpensePage,
   type GroupDetailResponse,
   type GroupsResponse,
   type UpdateGroupRequest,
@@ -19,7 +20,8 @@ import {
   listGroups,
   renameGroup,
 } from '../services/groups.js';
-import { idParam } from './params.js';
+import { listGroupExpenses } from '../services/expenses.js';
+import { idParam, pageQuery } from './params.js';
 
 export function groupsRouter(db: Db) {
   const router = Router();
@@ -43,6 +45,16 @@ export function groupsRouter(db: Db) {
     const { name } = req.body as UpdateGroupRequest;
     const group = renameGroup(db, idParam(req.params.id, 'Group'), currentUser(req).id, name);
     res.json({ group } satisfies GroupDetailResponse);
+  });
+
+  router.get('/groups/:id/expenses', (req, res) => {
+    const page = listGroupExpenses(
+      db,
+      idParam(req.params.id, 'Group'),
+      currentUser(req).id,
+      pageQuery(req.query),
+    );
+    res.json(page satisfies ExpensePage);
   });
 
   router.post('/groups/:id/members', validateBody(AddGroupMemberRequestSchema), (req, res) => {
