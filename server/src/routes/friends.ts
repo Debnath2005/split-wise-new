@@ -10,7 +10,7 @@ import {
 import type { Db } from '../db/client.js';
 import { currentUser, requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
-import { addFriend, getFriendDetail, listFriends } from '../services/friends.js';
+import { addFriend, getFriendDetail, listFriends, removeFriend } from '../services/friends.js';
 import { listFriendExpenses } from '../services/expenses.js';
 import { idParam, pageQuery } from './params.js';
 
@@ -31,6 +31,12 @@ export function friendsRouter(db: Db) {
   router.get('/friends/:userId', (req, res) => {
     const friendId = idParam(req.params.userId, 'Friend');
     res.json(getFriendDetail(db, currentUser(req).id, friendId) satisfies FriendDetailResponse);
+  });
+
+  /** 409 while you share a group or have a non-zero balance (SPEC §10). */
+  router.delete('/friends/:userId', (req, res) => {
+    removeFriend(db, currentUser(req).id, idParam(req.params.userId, 'Friend'));
+    res.status(204).end();
   });
 
   router.get('/friends/:userId/expenses', (req, res) => {

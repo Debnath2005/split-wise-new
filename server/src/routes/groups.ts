@@ -6,6 +6,7 @@ import {
   type AddGroupMemberRequest,
   type CreateGroupRequest,
   type ExpensePage,
+  type GroupBalancesResponse,
   type GroupDetailResponse,
   type GroupsResponse,
   type UpdateGroupRequest,
@@ -16,10 +17,13 @@ import { validateBody } from '../middleware/validate.js';
 import {
   addGroupMember,
   createGroup,
+  leaveGroup,
+  requireGroupForMember,
   getGroup,
   listGroups,
   renameGroup,
 } from '../services/groups.js';
+import { groupBalances } from '../services/balances.js';
 import { listGroupExpenses } from '../services/expenses.js';
 import { idParam, pageQuery } from './params.js';
 
@@ -55,6 +59,18 @@ export function groupsRouter(db: Db) {
       pageQuery(req.query),
     );
     res.json(page satisfies ExpensePage);
+  });
+
+  router.get('/groups/:id/balances', (req, res) => {
+    const groupId = idParam(req.params.id, 'Group');
+    requireGroupForMember(db, groupId, currentUser(req).id);
+    res.json(groupBalances(db, groupId) satisfies GroupBalancesResponse);
+  });
+
+  /** Leave: 409 unless all your balances inside the group are 0 (SPEC §10). */
+  router.delete('/groups/:id/members/me', (req, res) => {
+    leaveGroup(db, idParam(req.params.id, 'Group'), currentUser(req).id);
+    res.status(204).end();
   });
 
   router.post('/groups/:id/members', validateBody(AddGroupMemberRequestSchema), (req, res) => {

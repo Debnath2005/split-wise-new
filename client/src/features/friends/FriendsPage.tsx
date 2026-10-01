@@ -3,6 +3,7 @@ import { useAddFriend, useFriends } from '../../api/friends';
 import { Alert } from '../../components/ui/Alert';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
+import { BalanceChip } from '../../components/ui/BalanceChip';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { List, ListRow } from '../../components/ui/ListRow';
@@ -12,6 +13,7 @@ import { PageSpinner } from '../../components/ui/Spinner';
 import { Fab } from '../../components/ui/Fab';
 import { PlusIcon } from '../../components/ui/icons';
 import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
+import { SummaryHeader } from '../balances/SummaryHeader';
 import { PersonForm, contactOf } from '../people/PersonForm';
 
 export function FriendsPage() {
@@ -28,6 +30,7 @@ export function FriendsPage() {
           Add friend
         </Button>
       </PageHeader>
+      <SummaryHeader />
 
       {friends.isPending ? (
         <PageSpinner />
@@ -54,6 +57,7 @@ export function FriendsPage() {
                 </>
               }
               subtitle={contactOf(f)}
+              trailing={<BalanceChip paise={f.balance_paise} perspective="friend" />}
             />
           ))}
         </List>

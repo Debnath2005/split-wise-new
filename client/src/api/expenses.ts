@@ -1,9 +1,10 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import {
   ExpensePageSchema,
   ExpenseResponseSchema,
   type CreateExpenseRequest,
 } from '@split-wise/shared';
+import { useInvalidateMoney } from './balances';
 import { api } from './client';
 import { friendsKeys } from './friends';
 import { groupsKeys } from './groups';
@@ -45,15 +46,11 @@ export function useExpense(id: number) {
 }
 
 export function useCreateExpense() {
-  const queryClient = useQueryClient();
+  // A new expense can change group lists, friend lists and every balance.
+  const invalidate = useInvalidateMoney();
   return useMutation({
     mutationFn: (body: CreateExpenseRequest) =>
       api('POST', '/expenses', { body, schema: ExpenseResponseSchema }),
-    // A new expense can appear in a group list and in several friend lists.
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: groupsKeys.all }),
-        queryClient.invalidateQueries({ queryKey: friendsKeys.all }),
-      ]),
+    onSuccess: invalidate,
   });
 }

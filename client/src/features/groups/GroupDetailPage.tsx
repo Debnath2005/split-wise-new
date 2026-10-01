@@ -5,7 +5,6 @@ import { useGroupExpenses } from '../../api/expenses';
 import { useGroup } from '../../api/groups';
 import { Alert } from '../../components/ui/Alert';
 import { BackLink } from '../../components/ui/BackLink';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { IconButton } from '../../components/ui/IconButton';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { Tabs } from '../../components/ui/Tabs';
@@ -13,6 +12,7 @@ import { Fab } from '../../components/ui/Fab';
 import { SettingsIcon } from '../../components/ui/icons';
 import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
 import { ExpenseList } from '../expenses/ExpenseList';
+import { GroupBalances } from './GroupBalances';
 import { GroupSettingsSheet } from './GroupSettingsSheet';
 
 type Tab = 'expenses' | 'balances';
@@ -74,7 +74,7 @@ export function GroupDetailPage() {
             emptyText="Tap “Add expense” to record the first one."
           />
         ) : (
-          <EmptyState title="All settled">Balances arrive in M4.</EmptyState>
+          <GroupBalances groupId={id} meId={me?.id ?? 0} />
         )}
       </Tabs>
 

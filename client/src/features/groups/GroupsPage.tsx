@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGroups } from '../../api/groups';
 import { Alert } from '../../components/ui/Alert';
+import { BalanceChip } from '../../components/ui/BalanceChip';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { List, ListRow } from '../../components/ui/ListRow';
@@ -44,6 +45,7 @@ export function GroupsPage() {
               to={`/groups/${g.id}`}
               title={<span className="truncate">{g.name}</span>}
               subtitle={`${g.member_count} ${g.member_count === 1 ? 'member' : 'members'}`}
+              trailing={<BalanceChip paise={g.my_net_paise} perspective="group" />}
             />
           ))}
         </List>
