@@ -3,6 +3,7 @@ import type { SignupRequest, UpdateMeRequest, User } from '@split-wise/shared';
 import type { Db } from '../db/client.js';
 import { users, type UserRow } from '../db/schema.js';
 import { HttpError, fieldError } from '../errors.js';
+import { findValidInvite, markInviteUsed, mergeUsers } from './invites.js';
 import { hashPassword, verifyPassword } from './passwords.js';
 
 export function toUserDto(row: UserRow): User {
@@ -29,11 +30,24 @@ export async function signUp(db: Db, input: SignupRequest): Promise<UserRow> {
     return db.transaction((tx) => {
       const byEmail = tx.select().from(users).where(eq(users.email, input.email)).get();
       if (byEmail && !byEmail.isPlaceholder) throw new HttpError(409, 'CONFLICT', EMAIL_TAKEN);
+
+      // An invite link names the placeholder to claim, whatever email is used (ADR-0015).
+      const invite = input.invite_token ? findValidInvite(tx, input.invite_token) : null;
+      if (input.invite_token && !invite) {
+        throw fieldError('invite_token', 'This invite link is no longer valid');
+      }
+      if (invite && byEmail && byEmail.id !== invite.placeholder.id) {
+        // Another placeholder holds this email: it's the same person, so fold it in too.
+        mergeUsers(tx, byEmail.id, invite.placeholder.id);
+      }
+
       const byPhone = phone
         ? tx.select().from(users).where(eq(users.phone, phone)).get()
         : undefined;
 
-      const target = byEmail ?? (byPhone?.isPlaceholder ? byPhone : undefined);
+      const target = invite
+        ? invite.placeholder
+        : (byEmail ?? (byPhone?.isPlaceholder ? byPhone : undefined));
       const phoneHeldElsewhere = byPhone !== undefined && byPhone.id !== target?.id;
       if (phoneHeldElsewhere && !byPhone.isPlaceholder) {
         throw fieldError('phone', 'This phone number is used by another account');
@@ -44,6 +58,7 @@ export async function signUp(db: Db, input: SignupRequest): Promise<UserRow> {
         ? (target?.phone ?? null)
         : (phone ?? target?.phone ?? null);
 
+      if (invite) markInviteUsed(tx, invite.id);
       if (target) {
         return tx
           .update(users)

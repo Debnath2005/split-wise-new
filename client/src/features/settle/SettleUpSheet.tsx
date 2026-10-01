@@ -17,6 +17,7 @@ import { Select } from '../../components/ui/Select';
 import { Sheet } from '../../components/ui/Sheet';
 import { Skeleton } from '../../components/ui/Spinner';
 import { TextField } from '../../components/ui/TextField';
+import { copyText } from '../../lib/clipboard';
 import { todayLocal } from '../../lib/dates';
 
 /** One debt that can be settled: who pays whom, how much is outstanding, and in which scope. */
@@ -30,29 +31,6 @@ export interface SettleOption {
 /** Phones get the UPI button; mouse-driven screens get the QR code (SPEC §8). */
 const isTouchDevice = () =>
   typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-
-/**
- * Copies text; falls back to selecting it, because the Clipboard API only works on HTTPS
- * (phones testing over plain-HTTP LAN addresses don't have it).
- */
-async function copyText(text: string, fallbackInput: HTMLInputElement | null): Promise<boolean> {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    /* fall through */
-  }
-  if (!fallbackInput) return false;
-  fallbackInput.focus();
-  fallbackInput.select();
-  try {
-    return document.execCommand('copy');
-  } catch {
-    return false;
-  }
-}
 
 function UpiQr({ uri }: { uri: string }) {
   const [src, setSrc] = useState<string | null>(null);

@@ -4,6 +4,7 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { SignupPage } from '../features/auth/SignupPage';
 import { ActivityPage } from '../features/activity/ActivityPage';
 import { ExpenseDetailPage } from '../features/expenses/ExpenseDetailPage';
+import { InvitePage } from '../features/invites/InvitePage';
 import { FriendDetailPage } from '../features/friends/FriendDetailPage';
 import { FriendsPage } from '../features/friends/FriendsPage';
 import { GroupDetailPage } from '../features/groups/GroupDetailPage';
@@ -36,5 +37,7 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // Public: works logged in or out (ADR-0015).
+  { path: '/invite/:token', element: <InvitePage /> },
   { path: '*', element: <Navigate to="/friends" replace /> },
 ]);

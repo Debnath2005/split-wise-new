@@ -20,3 +20,4 @@ Each ADR records one decision: its context, the decision and its consequences. B
 | [0012](0012-greedy-debt-simplification.md) | Greedy debt simplification, suggestions only | Accepted |
 | [0013](0013-upi-deep-link-handoff.md) | UPI deep-link handoff, self-reported settlements | Accepted |
 | [0014](0014-single-origin-deployment.md) | Single-origin deployment | Accepted |
+| [0015](0015-invite-links-and-merge.md) | Invite links; link-only merge of a placeholder into an existing account | Accepted |

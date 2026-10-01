@@ -171,6 +171,11 @@ settlements                         -- "A paid B ₹X"
   note TEXT NULL, settled_on TEXT (YYYY-MM-DD),
   created_by_user_id → users, deleted_at NULL, deleted_by_user_id NULL
 
+invites                             -- invite links for placeholders (ADR-0015)
+  id, placeholder_user_id → users, created_by_user_id → users,
+  token_hash TEXT UNIQUE (SHA-256 of the link token), expires_at INTEGER (30 days),
+  used_at INTEGER NULL
+
 activities
   id, actor_user_id → users,
   type TEXT  -- expense_created | expense_updated | expense_deleted | expense_restored
@@ -192,6 +197,7 @@ activity_recipients                 -- who sees this item in their feed
 - Add a friend or member as **name + (email or phone)**. If a user (real or placeholder) already has that email or phone, **reuse that row**. Otherwise insert a placeholder.
 - **Group members are friends**: joining a group (at creation or when added) creates a friendship between the new member and every current member, so anyone you share a group with appears on your Friends list and in your balances.
 - **Claiming**: when someone signs up with an email or phone that matches a placeholder (email is checked first, then the optional signup phone), the placeholder row **becomes** their account: set `password_hash`, clear `is_placeholder`, set `claimed_at`. All existing expenses, groups and friendships come with it automatically because the id doesn't change.
+- **Invite links** (ADR-0015): any friend of a placeholder can share a single-use, 30-day link. Signing up through it claims that placeholder even with a different email; opening it while logged in **merges** the placeholder into the existing account (all references move, shares in the same expense are summed, balances unchanged).
 - Placeholders cannot log in, and never appear in user search except to the people who created or share a group with them.
 - ⚠️ **Known MVP risk**: without email verification, someone could sign up with another person's email and claim their placeholder, which would show them that person's balances. Mitigation in the MVP: claiming only exposes what the creator already entered (no sensitive data). The **post-MVP fix** is email OTP or verification before claiming. Track it in §13.
 
@@ -339,6 +345,12 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 | DELETE | `/settlements/:id` | soft delete |
 | GET | `/settlements/upi-link?to=<userId>&amount_paise=&group_id=` | returns `{ uri, vpa, payee_name }` or 422 `NO_VPA` |
 
+**Invites** (ADR-0015)
+| POST | `/users/:id/invite` | for a placeholder you're friends with → `{ token, expires_at }`; replaces any earlier link |
+| GET | `/invites/:token` | no login needed → `{ valid, inviter_name?, invitee_name? }` |
+| POST | `/invites/:token/accept` | logged in → merges the placeholder into your account |
+| POST | `/auth/signup` | also accepts `invite_token` to claim that placeholder |
+
 **Balances & Activity**
 | GET | `/balances/summary` | `{ owe_paise, owed_paise, net_paise }` for the dashboard |
 | GET | `/activity?before=&limit=&expense_id=` | feed for the current user; `expense_id` filters to one expense's history |
@@ -358,7 +370,7 @@ Authorization rule (enforced in services, not routes): a user can read or modify
 
 ### Screens
 1. **Login / Signup**: one column, `autocomplete` attributes, show/hide password.
-2. **Friends**: balance summary header (owe/owed), a list of friends with colored balance chips, and "Add friend" in a bottom sheet.
+2. **Friends**: balance summary header (owe/owed), a list of friends with colored balance chips, and "Add friend" in a bottom sheet. Adding someone without an account shows an **invite link** with Share / Copy (also on their friend page). `/invite/:token` lets them sign up, or log in and accept.
 3. **Friend detail**: total balance, per-group breakdown, **Settle up** button, shared expenses list.
 4. **Groups**: list showing my net per group. **Create group** as a full-screen sheet (name + pick friends + add new people inline).
 5. **Group detail**: tabs for *Expenses* and *Balances*. The balances tab shows member nets and suggested transfers, each with a "Settle" button. The settings gear has rename, the simplify toggle, members and leave.
@@ -400,7 +412,7 @@ Authorization rule (enforced in services, not routes): a user can read or modify
 ---
 
 ## 13. Out of Scope / Future
-Email/OTP verification (**required before a public launch**, see §5), invites by link, push/email notifications, multi-currency, multiple payers, shares and adjustment splits, receipts, recurring expenses, CSV export, charts, PWA offline mode, dark mode.
+Email/OTP verification (**required before a public launch**, see §5), push/email notifications, multi-currency, multiple payers, shares and adjustment splits, receipts, recurring expenses, CSV export, charts, PWA offline mode, dark mode.
 
 ---
 

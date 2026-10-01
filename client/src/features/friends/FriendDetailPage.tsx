@@ -22,6 +22,7 @@ import { TextField } from '../../components/ui/TextField';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
 import { ExpenseList } from '../expenses/ExpenseList';
+import { InviteLinkPanel } from '../invites/InviteLinkPanel';
 import { contactOf } from '../people/PersonForm';
 import { SettleUpSheet, type SettleOption } from '../settle/SettleUpSheet';
 
@@ -199,6 +200,7 @@ export function FriendDetailPage() {
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [settling, setSettling] = useState(false);
+  const [inviting, setInviting] = useState(false);
 
   if (query.isPending) return <PageSpinner />;
   if (query.isError) {
@@ -231,6 +233,16 @@ export function FriendDetailPage() {
               {friend.name} hasn't joined yet. When they sign up with this email or phone, they'll
               see everything you've shared with them.
             </p>
+          )}
+          {friend.is_placeholder && (
+            <Button
+              variant="secondary"
+              fullWidth
+              className="mt-4"
+              onClick={() => setInviting(true)}
+            >
+              Invite link
+            </Button>
           )}
         </Card>
 
@@ -279,6 +291,9 @@ export function FriendDetailPage() {
           Remove friend
         </Button>
       </div>
+      <Sheet open={inviting} onClose={() => setInviting(false)} title="Invite link">
+        {inviting && <InviteLinkPanel placeholderId={friend.id} name={friend.name} />}
+      </Sheet>
       <SettleUpSheet
         open={settling}
         onClose={() => setSettling(false)}

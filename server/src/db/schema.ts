@@ -243,3 +243,23 @@ export const settlements = sqliteTable(
 );
 
 export type SettlementRow = typeof settlements.$inferSelect;
+
+/** Invite links for placeholders (ADR-0015). Only the SHA-256 of the token is stored. */
+export const invites = sqliteTable(
+  'invites',
+  {
+    id: integer('id').primaryKey(),
+    /** Deleted with the placeholder when it is merged into an existing account. */
+    placeholderUserId: integer('placeholder_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdByUserId: integer('created_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: integer('expires_at').notNull(),
+    usedAt: integer('used_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('invites_placeholder_idx').on(t.placeholderUserId)],
+);

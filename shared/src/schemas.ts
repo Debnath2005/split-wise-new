@@ -26,6 +26,9 @@ export const UPI_VPA_PATTERN = UPI_VPA_REGEX;
 /** E.164, e.g. "+919876543210". */
 export const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
 
+/** base64url of 32 random bytes. */
+export const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
 const name = z.string().trim().min(1, 'Enter your name').max(50, 'Name is too long');
 const email = z
   .string()
@@ -58,6 +61,8 @@ export const SignupRequestSchema = z.object({
   password: newPassword,
   /** Optional; also used to claim a placeholder that was added by phone (SPEC §5). */
   phone: clearable(phoneNumber).optional(),
+  /** From an invite link: claims that placeholder even if the email differs (ADR-0015). */
+  invite_token: z.string().regex(INVITE_TOKEN_PATTERN).optional(),
 });
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 
@@ -522,3 +527,19 @@ export const UpdatePlaceholderRequestSchema = z
   })
   .strict();
 export type UpdatePlaceholderRequest = z.infer<typeof UpdatePlaceholderRequestSchema>;
+
+// ── Invite links (ADR-0015) ─────────────────────────────────────────────────
+
+export const InviteResponseSchema = z.object({
+  /** Put in the link: /invite/<token>. Shown once; only its hash is stored. */
+  token: z.string(),
+  expires_at: z.number().int(),
+});
+export type InviteResponse = z.infer<typeof InviteResponseSchema>;
+
+/** Public preview. Unknown, expired and used tokens all look the same. */
+export const InvitePreviewResponseSchema = z.discriminatedUnion('valid', [
+  z.object({ valid: z.literal(true), inviter_name: z.string(), invitee_name: z.string() }),
+  z.object({ valid: z.literal(false) }),
+]);
+export type InvitePreviewResponse = z.infer<typeof InvitePreviewResponseSchema>;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { SignupRequestSchema } from '@split-wise/shared';
 import { useSignup } from '../../api/auth';
 import { applyServerErrors } from '../../api/formErrors';
@@ -15,17 +15,22 @@ export function SignupPage() {
   const navigate = useNavigate();
   const from = (useLocation().state as FromState | null)?.from ?? '/friends';
   const signup = useSignup();
+  const [params] = useSearchParams();
+  const inviteToken = params.get('invite');
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors },
-  } = useForm({ resolver: zodResolver(SignupRequestSchema) });
+  } = useForm({
+    resolver: zodResolver(SignupRequestSchema),
+    defaultValues: { name: params.get('name') ?? '' },
+  });
 
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
-    signup.mutate(values, {
+    signup.mutate(inviteToken ? { ...values, invite_token: inviteToken } : values, {
       onSuccess: () => navigate(from, { replace: true }),
       onError: (err) =>
         setFormError(applyServerErrors(err, setError, ['name', 'email', 'phone', 'password'])),
@@ -36,6 +41,11 @@ export function SignupPage() {
     <AuthLayout title="Create account">
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {formError && <Alert tone="error">{formError}</Alert>}
+        {inviteToken && (
+          <Alert tone="success">
+            You're joining through an invite — your shared expenses will be waiting.
+          </Alert>
+        )}
         <TextField
           label="Name"
           autoComplete="name"

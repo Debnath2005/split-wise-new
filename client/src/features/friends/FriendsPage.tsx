@@ -14,6 +14,7 @@ import { Fab } from '../../components/ui/Fab';
 import { PlusIcon } from '../../components/ui/icons';
 import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
 import { SummaryHeader } from '../balances/SummaryHeader';
+import { InviteLinkPanel } from '../invites/InviteLinkPanel';
 import { PersonForm, contactOf } from '../people/PersonForm';
 
 export function FriendsPage() {
@@ -21,6 +22,11 @@ export function FriendsPage() {
   const addFriend = useAddFriend();
   const [adding, setAdding] = useState(false);
   const [addingExpense, setAddingExpense] = useState(false);
+  const [invitee, setInvitee] = useState<{ id: number; name: string } | null>(null);
+  const closeAdd = () => {
+    setAdding(false);
+    setInvitee(null);
+  };
 
   return (
     <>
@@ -65,21 +71,36 @@ export function FriendsPage() {
 
       <Sheet
         open={adding}
-        onClose={() => setAdding(false)}
-        title="Add friend"
+        onClose={closeAdd}
+        title={invitee ? 'Friend added' : 'Add friend'}
         footer={
-          <Button type="submit" form="add-friend" loading={addFriend.isPending} fullWidth>
-            Add friend
-          </Button>
+          invitee ? (
+            <Button variant="secondary" fullWidth onClick={closeAdd}>
+              Done
+            </Button>
+          ) : (
+            <Button type="submit" form="add-friend" loading={addFriend.isPending} fullWidth>
+              Add friend
+            </Button>
+          )
         }
       >
-        {adding && (
-          <PersonForm
-            formId="add-friend"
-            submit={(values) => addFriend.mutateAsync(values)}
-            onDone={() => setAdding(false)}
-          />
-        )}
+        {adding &&
+          (invitee ? (
+            // Someone without an account: offer a shareable invite link (ADR-0015).
+            <InviteLinkPanel placeholderId={invitee.id} name={invitee.name} />
+          ) : (
+            <PersonForm
+              formId="add-friend"
+              submit={async (values) => {
+                const { friend } = await addFriend.mutateAsync(values);
+                if (friend.is_placeholder) setInvitee(friend);
+              }}
+              onDone={() => {
+                if (!addFriend.data?.friend.is_placeholder) closeAdd();
+              }}
+            />
+          ))}
       </Sheet>
       <Fab onClick={() => setAddingExpense(true)}>Add expense</Fab>
       <AddExpenseSheet open={addingExpense} onClose={() => setAddingExpense(false)} />
