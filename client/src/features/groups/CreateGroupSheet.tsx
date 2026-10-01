@@ -76,26 +76,26 @@ function CreateGroupForm({
       />
 
       <fieldset>
-        <legend className="mb-1 text-lg font-semibold">Friends</legend>
+        <legend className="mb-1 text-base font-semibold">Friends</legend>
         {friends.data?.length ? (
           friends.data.map((f) => (
             <Checkbox key={f.id} checked={picked.has(f.id)} onChange={(on) => toggle(f.id, on)}>
               <Avatar name={f.name} placeholder={f.is_placeholder} />
               <span className="min-w-0">
                 <span className="block truncate">{f.name}</span>
-                <span className="block truncate text-lg text-chalk-muted">{contactOf(f)}</span>
+                <span className="block truncate text-base text-chalk-muted">{contactOf(f)}</span>
               </span>
             </Checkbox>
           ))
         ) : (
-          <p className="text-lg text-chalk-muted">
+          <p className="text-base text-chalk-muted">
             {friends.isPending ? 'Loading friends…' : 'No friends yet — add people below.'}
           </p>
         )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-4">
-        <legend className="mb-1 text-lg font-semibold">Someone new</legend>
+        <legend className="mb-1 text-base font-semibold">Someone new</legend>
         {newMembers.fields.map((field, i) => {
           const e = errors.new_members?.[i];
           return (

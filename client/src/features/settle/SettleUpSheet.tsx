@@ -130,7 +130,7 @@ function SettleForm({ option, onDone }: { option: SettleOption; onDone: () => vo
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-2xl">
+      <p className="text-xl">
         <span className="font-semibold">{name(option.from)}</span> →{' '}
         <span className="font-semibold">{name(option.to)}</span>
         {option.group && <span className="text-chalk-muted"> · {option.group.name}</span>}
@@ -145,7 +145,7 @@ function SettleForm({ option, onDone }: { option: SettleOption; onDone: () => vo
         hint={`Outstanding ${formatPaise(option.amountPaise)}`}
       />
       {over && (
-        <p className="-mt-3 text-lg text-yellow">
+        <p className="-mt-3 text-base text-yellow">
           That's more than the outstanding {formatPaise(option.amountPaise)}.
         </p>
       )}
@@ -155,7 +155,7 @@ function SettleForm({ option, onDone }: { option: SettleOption; onDone: () => vo
       {phase === 'confirm' && (
         // SPEC §8 step 3: after the UPI app, ask before recording anything.
         <section className="flex flex-col gap-3 rounded-card border-[1.5px] border-dashed border-accent p-4">
-          <h3 className="text-2xl font-bold">Did the payment go through?</h3>
+          <h3 className="text-xl font-bold">Did the payment go through?</h3>
           <Button fullWidth loading={create.isPending} onClick={() => record('upi')}>
             Yes, record it
           </Button>
@@ -175,7 +175,7 @@ function SettleForm({ option, onDone }: { option: SettleOption; onDone: () => vo
                 <a
                   href={upi.data.uri}
                   onClick={() => setPhase('confirm')}
-                  className="chalk-press inline-flex min-h-14 items-center justify-center rounded-control border-[1.5px] border-accent bg-accent px-4 text-2xl font-semibold text-slate"
+                  className="chalk-press inline-flex min-h-14 items-center justify-center rounded-control border-[1.5px] border-accent bg-accent px-4 text-xl font-semibold text-slate"
                 >
                   Pay {amountPaise !== null ? formatPaise(amountPaise) : ''} via UPI
                 </a>
@@ -183,7 +183,7 @@ function SettleForm({ option, onDone }: { option: SettleOption; onDone: () => vo
               {showQr ? (
                 <div className="flex flex-col gap-2 text-center">
                   <UpiQr uri={upi.data.uri} />
-                  <p className="text-lg text-chalk-muted">
+                  <p className="text-base text-chalk-muted">
                     Scan with any UPI app, then come back here.
                   </p>
                   <Button variant="secondary" onClick={() => setPhase('confirm')}>
@@ -216,7 +216,7 @@ function SettleForm({ option, onDone }: { option: SettleOption; onDone: () => vo
                 </Button>
               </div>
               {copied && (
-                <p className="-mt-1 text-lg text-chalk-muted">
+                <p className="-mt-1 text-base text-chalk-muted">
                   {copied === 'yes' ? 'Copied.' : 'Selected — use your phone’s Copy.'}
                 </p>
               )}

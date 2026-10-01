@@ -22,7 +22,7 @@ function Impact({ paise, past }: { paise: number; past: boolean }) {
   return (
     <span
       className={cx(
-        'flex shrink-0 flex-col items-end text-right text-lg leading-tight',
+        'flex shrink-0 flex-col items-end text-right text-base leading-tight',
         past ? 'text-chalk-muted' : getsBack ? 'text-positive' : 'text-negative',
       )}
     >
@@ -48,7 +48,7 @@ export function ActivityRow({
 
   const body = (
     <span className="min-w-0 flex-1">
-      <span className="block text-xl/snug">
+      <span className="block text-lg/snug">
         {sentence.map((s, i) => (
           <span key={i} className={cx(s.strong && 'font-semibold', s.em && 'text-accent')}>
             {s.text}
@@ -56,9 +56,9 @@ export function ActivityRow({
         ))}
       </span>
       {changes.length > 0 && (
-        <span className="block text-lg/snug text-chalk-muted">{changes.join(' · ')}</span>
+        <span className="block text-base/snug text-chalk-muted">{changes.join(' · ')}</span>
       )}
-      <span className="block text-base text-chalk-muted">{formatRelative(item.created_at)}</span>
+      <span className="block text-sm text-chalk-muted">{formatRelative(item.created_at)}</span>
     </span>
   );
 
@@ -87,7 +87,7 @@ export function ActivityRow({
           </Button>
         )}
         {restore.isError && (
-          <span className="max-w-40 text-right text-base text-danger">{restore.error.message}</span>
+          <span className="max-w-40 text-right text-sm text-danger">{restore.error.message}</span>
         )}
       </span>
     </li>

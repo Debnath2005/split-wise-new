@@ -12,7 +12,7 @@ export function Select({ label, options, error, className, ...rest }: SelectProp
   const id = useId();
   return (
     <div className={cx('flex flex-col gap-1.5', className)}>
-      <label htmlFor={id} className="text-lg font-medium tracking-[0.02em]">
+      <label htmlFor={id} className="text-base font-medium tracking-[0.02em]">
         {label}
       </label>
       <div className="relative">
@@ -21,7 +21,7 @@ export function Select({ label, options, error, className, ...rest }: SelectProp
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
           className={cx(
-            'min-h-11 w-full appearance-none rounded-control border bg-board-sunken pr-10 pl-3 text-xl text-chalk',
+            'min-h-11 w-full appearance-none rounded-control border bg-board-sunken pr-10 pl-3 text-lg text-chalk',
             error ? 'border-danger' : 'border-line-strong',
           )}
           {...rest}
@@ -44,7 +44,7 @@ export function Select({ label, options, error, className, ...rest }: SelectProp
         </svg>
       </div>
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-lg text-danger">
+        <p id={`${id}-error`} role="alert" className="text-base text-danger">
           {error}
         </p>
       )}

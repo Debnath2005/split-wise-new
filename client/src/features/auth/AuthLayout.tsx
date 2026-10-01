@@ -8,7 +8,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
       <div className="mb-8">
         <Brand />
       </div>
-      <h1 className="mb-6 text-5xl/tight font-bold tracking-[-0.01em]">{title}</h1>
+      <h1 className="mb-6 text-4xl/tight font-bold tracking-[-0.01em]">{title}</h1>
       <Card>{children}</Card>
     </main>
   );

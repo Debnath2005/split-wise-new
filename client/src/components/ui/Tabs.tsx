@@ -32,7 +32,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, children }: Tabs
             aria-controls={`${id}-panel`}
             onClick={() => onChange(tab.value)}
             className={cx(
-              'min-h-10 rounded-[6px] text-xl font-semibold transition-colors',
+              'min-h-10 rounded-[6px] text-lg font-semibold transition-colors',
               tab.value === value ? 'bg-board-raised text-accent shadow-card' : 'text-chalk-muted',
             )}
           >

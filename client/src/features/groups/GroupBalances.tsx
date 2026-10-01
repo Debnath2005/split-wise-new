@@ -34,7 +34,7 @@ export function GroupBalances({
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h2 className="mb-2 text-3xl/tight font-bold">Who pays whom</h2>
+        <h2 className="mb-2 text-2xl/tight font-bold">Who pays whom</h2>
         {transfers.length === 0 ? (
           <EmptyState title="All settled up">Nobody owes anything in this group.</EmptyState>
         ) : (
@@ -88,7 +88,7 @@ export function GroupBalances({
       </section>
 
       <section>
-        <h2 className="mb-2 text-3xl/tight font-bold">Everyone's balance</h2>
+        <h2 className="mb-2 text-2xl/tight font-bold">Everyone's balance</h2>
         <List label="Member balances">
           {members.map((m) => (
             <ListRow

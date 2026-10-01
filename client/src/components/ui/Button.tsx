@@ -42,7 +42,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        'chalk-press inline-flex min-h-11 items-center justify-center gap-2 rounded-control border-[1.5px] px-4 text-xl leading-none font-semibold',
+        'chalk-press inline-flex min-h-11 items-center justify-center gap-2 rounded-control border-[1.5px] px-4 text-lg leading-none font-semibold',
         'disabled:cursor-not-allowed disabled:opacity-50',
         variants[variant],
         fullWidth && 'w-full',

@@ -156,10 +156,10 @@ These override the sections above for this app. They exist so the design meets S
   - Always pair the colour with text, never colour alone.
 - **No pure white anywhere.**
 
-**Type:**
-- **Caveat** is used for all text, self-hosted through `@fontsource`; the CSP blocks Google Fonts.
-- Sizes are larger than the scale above, because Caveat runs small: body is 1.25rem, and inputs are at least 18px so iOS never zooms.
-- **Money amounts use JetBrains Mono** with tabular figures. It's the doc's "technical values" font, and its digits scan more easily than handwriting.
+**Type** (updated 2026-10-01, at the owner's request):
+- **Sofia Sans** for all text: `font-family: "Sofia Sans", Arial, sans-serif`. It's self-hosted through `@fontsource/sofia-sans`, because the CSP blocks Google Fonts. It **replaces Caveat**.
+- Sizes follow the scale above: body 1rem/1.6, H1 2.25rem, H2 1.5rem. Inputs stay at 16px or more, so iOS never zooms.
+- **Money amounts use JetBrains Mono** with tabular figures (the doc's "technical values" font).
 
 **Mobile rules (unchanged from before):**
 - Tap targets are at least 44×44px.

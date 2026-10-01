@@ -59,7 +59,7 @@ export function Sheet({ open, onClose, title, variant = 'bottom', footer, childr
       )}
     >
       <header className="flex items-center justify-between gap-2 border-b-[1.5px] border-dashed border-line py-2 pr-2 pl-5 pt-[max(0.5rem,env(safe-area-inset-top))] md:pt-2">
-        <h2 className="text-3xl/tight font-bold">{title}</h2>
+        <h2 className="text-2xl/tight font-bold">{title}</h2>
         <IconButton label="Close" onClick={onClose}>
           <CloseIcon />
         </IconButton>
