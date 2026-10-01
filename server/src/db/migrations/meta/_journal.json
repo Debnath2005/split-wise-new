@@ -15,6 +15,13 @@
       "when": 1790846570788,
       "tag": "0001_users_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790848023207,
+      "tag": "0002_friends_groups_activities",
+      "breakpoints": true
     }
   ]
 }

@@ -21,3 +21,7 @@ export function createDb(path: string) {
 }
 
 export type Db = ReturnType<typeof createDb>;
+/** A transaction handle from `db.transaction((tx) => …)`. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+/** Services that may run inside a caller's transaction accept either. */
+export type DbOrTx = Db | Tx;

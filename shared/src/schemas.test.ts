@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ApiErrorSchema,
   HealthResponseSchema,
+  CreateGroupRequestSchema,
+  PersonInputSchema,
   SignupRequestSchema,
   UpdateMeRequestSchema,
 } from './schemas.js';
@@ -71,5 +73,54 @@ describe('UpdateMeRequestSchema', () => {
 
   it('rejects unknown fields such as email', () => {
     expect(UpdateMeRequestSchema.safeParse({ email: 'x@y.z' }).success).toBe(false);
+  });
+});
+
+describe('PersonInputSchema', () => {
+  it('normalises email and phone', () => {
+    expect(
+      PersonInputSchema.parse({ name: ' Ravi ', email: ' Ravi@X.com ', phone: '+91 98765-43210' }),
+    ).toEqual({ name: 'Ravi', email: 'ravi@x.com', phone: '+919876543210' });
+  });
+
+  it('needs an email or a phone, reporting it on the email field', () => {
+    const result = PersonInputSchema.safeParse({ name: 'Ravi', email: '', phone: '  ' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]).toMatchObject({
+      path: ['email'],
+      message: 'Add an email or a phone number',
+    });
+  });
+
+  it('accepts phone only', () => {
+    expect(PersonInputSchema.parse({ name: 'Ravi', phone: '+919876543210' })).toMatchObject({
+      phone: '+919876543210',
+    });
+  });
+});
+
+describe('CreateGroupRequestSchema', () => {
+  it('defaults member lists to empty and trims the name', () => {
+    expect(CreateGroupRequestSchema.parse({ name: ' Goa ' })).toEqual({
+      name: 'Goa',
+      member_ids: [],
+      new_members: [],
+    });
+  });
+
+  it('rejects a blank name and unknown fields', () => {
+    expect(CreateGroupRequestSchema.safeParse({ name: '  ' }).success).toBe(false);
+    expect(CreateGroupRequestSchema.safeParse({ name: 'G', memberIds: [1] }).success).toBe(false);
+  });
+});
+
+describe('SignupRequestSchema phone', () => {
+  it('is optional, and blank means none', () => {
+    const base = { name: 'A', email: 'a@b.co', password: 'longenough' };
+    expect(SignupRequestSchema.parse(base).phone).toBeUndefined();
+    expect(SignupRequestSchema.parse({ ...base, phone: '' }).phone).toBeNull();
+    expect(SignupRequestSchema.parse({ ...base, phone: '+91 98765 43210' }).phone).toBe(
+      '+919876543210',
+    );
   });
 });

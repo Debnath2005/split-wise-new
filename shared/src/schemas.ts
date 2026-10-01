@@ -30,6 +30,12 @@ const email = z
   .toLowerCase()
   .max(254, 'Email is too long')
   .pipe(z.email('Enter a valid email'));
+/** Spaces and dashes are stripped, then the number must be E.164. */
+const phoneNumber = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/[\s-]/g, ''))
+  .pipe(z.string().regex(PHONE_PATTERN, 'Use international format, e.g. +919876543210'));
 const newPassword = z
   .string()
   .min(8, 'Use at least 8 characters')
@@ -43,7 +49,13 @@ const clearable = <T extends z.ZodType<string, string>>(schema: T) =>
     .transform((v) => (v === null || v.trim() === '' ? null : v))
     .pipe(schema.nullable());
 
-export const SignupRequestSchema = z.object({ name, email, password: newPassword });
+export const SignupRequestSchema = z.object({
+  name,
+  email,
+  password: newPassword,
+  /** Optional; also used to claim a placeholder that was added by phone (SPEC §5). */
+  phone: clearable(phoneNumber).optional(),
+});
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 
 export const LoginRequestSchema = z.object({
@@ -55,13 +67,7 @@ export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export const UpdateMeRequestSchema = z
   .object({
     name: name.optional(),
-    phone: clearable(
-      z
-        .string()
-        .trim()
-        .transform((v) => v.replace(/[\s-]/g, ''))
-        .pipe(z.string().regex(PHONE_PATTERN, 'Use international format, e.g. +919876543210')),
-    ).optional(),
+    phone: clearable(phoneNumber).optional(),
     upi_vpa: clearable(
       z.string().trim().regex(UPI_VPA_PATTERN, 'Enter a valid UPI ID, e.g. name@okicici'),
     ).optional(),
@@ -86,3 +92,96 @@ export type User = z.infer<typeof UserSchema>;
 
 export const MeResponseSchema = z.object({ user: UserSchema });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
+
+// ── People, friends & groups (SPEC §5, §10) ─────────────────────────────────
+
+/** Someone to add as a friend or group member: an existing user is matched by email or phone. */
+export const PersonInputSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Enter a name').max(50, 'Name is too long'),
+    email: clearable(email).optional(),
+    phone: clearable(phoneNumber).optional(),
+  })
+  .refine((p) => p.email || p.phone, {
+    message: 'Add an email or a phone number',
+    path: ['email'],
+  });
+export type PersonInput = z.infer<typeof PersonInputSchema>;
+
+/** Another user as seen by their friends and fellow group members. */
+export const PersonSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  /** True until they sign up and claim the account. */
+  is_placeholder: z.boolean(),
+});
+export type Person = z.infer<typeof PersonSchema>;
+
+export const FriendsResponseSchema = z.object({ friends: z.array(PersonSchema) });
+export type FriendsResponse = z.infer<typeof FriendsResponseSchema>;
+
+export const AddFriendResponseSchema = z.object({ friend: PersonSchema });
+export type AddFriendResponse = z.infer<typeof AddFriendResponseSchema>;
+
+/** Groups can have at most this many members (SPEC §12). */
+export const MAX_GROUP_MEMBERS = 50;
+
+const groupName = z.string().trim().min(1, 'Enter a group name').max(50, 'Name is too long');
+const userId = z.number().int().positive();
+
+export const GroupSummarySchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  member_count: z.number().int(),
+});
+export type GroupSummary = z.infer<typeof GroupSummarySchema>;
+
+export const GroupsResponseSchema = z.object({ groups: z.array(GroupSummarySchema) });
+export type GroupsResponse = z.infer<typeof GroupsResponseSchema>;
+
+export const FriendDetailResponseSchema = z.object({
+  friend: PersonSchema,
+  shared_groups: z.array(GroupSummarySchema),
+});
+export type FriendDetailResponse = z.infer<typeof FriendDetailResponseSchema>;
+
+export const GroupDetailSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  simplify_debts: z.boolean(),
+  created_by_user_id: z.number().int(),
+  members: z.array(PersonSchema),
+});
+export type GroupDetail = z.infer<typeof GroupDetailSchema>;
+
+export const GroupDetailResponseSchema = z.object({ group: GroupDetailSchema });
+export type GroupDetailResponse = z.infer<typeof GroupDetailResponseSchema>;
+
+export const CreateGroupRequestSchema = z
+  .object({
+    name: groupName,
+    /** Existing friends of the creator. */
+    member_ids: z
+      .array(userId)
+      .max(MAX_GROUP_MEMBERS - 1)
+      .default([]),
+    /** People to add by name + email/phone (existing users are matched, others become placeholders). */
+    new_members: z
+      .array(PersonInputSchema)
+      .max(MAX_GROUP_MEMBERS - 1)
+      .default([]),
+  })
+  .strict();
+export type CreateGroupRequest = z.infer<typeof CreateGroupRequestSchema>;
+
+export const UpdateGroupRequestSchema = z.object({ name: groupName }).strict();
+export type UpdateGroupRequest = z.infer<typeof UpdateGroupRequestSchema>;
+
+/** Add an existing friend by id, or a person by name + email/phone. */
+export const AddGroupMemberRequestSchema = z.union([
+  z.object({ user_id: userId }).strict(),
+  PersonInputSchema,
+]);
+export type AddGroupMemberRequest = z.infer<typeof AddGroupMemberRequestSchema>;

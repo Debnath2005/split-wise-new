@@ -12,6 +12,8 @@ import {
   type RateLimits,
 } from './middleware/rateLimit.js';
 import { authRouter } from './routes/auth.js';
+import { friendsRouter } from './routes/friends.js';
+import { groupsRouter } from './routes/groups.js';
 import { healthRouter } from './routes/health.js';
 import { meRouter } from './routes/me.js';
 
@@ -48,6 +50,8 @@ export function createApp({
   api.use(healthRouter(db));
   api.use(authRouter({ db, cookieSecure, limiters }));
   api.use(meRouter(db));
+  api.use(friendsRouter(db));
+  api.use(groupsRouter(db));
   api.use((_req, res) => {
     res.status(404).json(errorBody('NOT_FOUND', 'Route not found'));
   });

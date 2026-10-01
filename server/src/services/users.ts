@@ -15,21 +15,60 @@ const isUniqueViolation = (err: unknown, column: string) =>
   err.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
   err.message.includes(`users.${column}`);
 
+const EMAIL_TAKEN = 'An account with this email already exists';
+
+/**
+ * Creates an account, or claims a placeholder in place (ADR-0005): the placeholder row matching the
+ * email (checked first) or the optional phone becomes this account, so everything already linked to
+ * it — friendships, groups, activity — carries over without any merge.
+ */
 export async function signUp(db: Db, input: SignupRequest): Promise<UserRow> {
-  // Placeholder claiming (ADR-0005) arrives in M2; for now any existing row means the email is taken.
-  if (db.select({ id: users.id }).from(users).where(eq(users.email, input.email)).get()) {
-    throw new HttpError(409, 'CONFLICT', 'An account with this email already exists');
-  }
   const passwordHash = await hashPassword(input.password);
+  const phone = input.phone ?? null;
   try {
-    return db
-      .insert(users)
-      .values({ name: input.name, email: input.email, passwordHash })
-      .returning()
-      .get();
+    return db.transaction((tx) => {
+      const byEmail = tx.select().from(users).where(eq(users.email, input.email)).get();
+      if (byEmail && !byEmail.isPlaceholder) throw new HttpError(409, 'CONFLICT', EMAIL_TAKEN);
+      const byPhone = phone
+        ? tx.select().from(users).where(eq(users.phone, phone)).get()
+        : undefined;
+
+      const target = byEmail ?? (byPhone?.isPlaceholder ? byPhone : undefined);
+      const phoneHeldElsewhere = byPhone !== undefined && byPhone.id !== target?.id;
+      if (phoneHeldElsewhere && !byPhone.isPlaceholder) {
+        throw fieldError('phone', 'This phone number is used by another account');
+      }
+      // A phone held by a *different* placeholder stays there (rows can't be merged), so this
+      // account just doesn't get that number.
+      const phoneToSet = phoneHeldElsewhere
+        ? (target?.phone ?? null)
+        : (phone ?? target?.phone ?? null);
+
+      if (target) {
+        return tx
+          .update(users)
+          .set({
+            name: input.name,
+            email: input.email,
+            phone: phoneToSet,
+            passwordHash,
+            isPlaceholder: false,
+            claimedAt: Date.now(),
+          })
+          .where(eq(users.id, target.id))
+          .returning()
+          .get()!;
+      }
+      return tx
+        .insert(users)
+        .values({ name: input.name, email: input.email, phone: phoneToSet, passwordHash })
+        .returning()
+        .get();
+    });
   } catch (err) {
-    if (isUniqueViolation(err, 'email')) {
-      throw new HttpError(409, 'CONFLICT', 'An account with this email already exists');
+    if (isUniqueViolation(err, 'email')) throw new HttpError(409, 'CONFLICT', EMAIL_TAKEN);
+    if (isUniqueViolation(err, 'phone')) {
+      throw fieldError('phone', 'This phone number is used by another account');
     }
     throw err;
   }
