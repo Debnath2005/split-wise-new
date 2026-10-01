@@ -5,6 +5,7 @@ import { createApp } from './app.js';
 const db = createDb(config.databasePath);
 const app = createApp({
   db,
+  cookieSecure: config.cookieSecure,
   ...(config.isProduction && { clientDistPath: config.clientDistPath }),
 });
 

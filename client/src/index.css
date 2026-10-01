@@ -7,6 +7,8 @@
   --color-brand: #00ed64;
   --color-brand-dark: #13aa52;
   --color-brand-soft: #e3fcf7;
+  /* DESIGN.md §10: text-safe green (#00ED64 is for fills only). */
+  --color-green-text: #00684a;
   --color-ink: #001e2b;
   --color-ink-2: #112733;
   --color-gray-dark-2: #3d4f58;
@@ -33,5 +35,9 @@
   }
   body {
     @apply bg-white font-sans text-base/relaxed text-ink antialiased;
+  }
+  /* DESIGN.md §10: visible ink focus ring with offset. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ink;
   }
 }

@@ -273,3 +273,18 @@ MongoDB mobile layouts should still feel developer-friendly and efficient. The g
 ```text
 Design this interface in the style of MongoDB’s current website and LeafyGreen design system. Use MongoDB green (#00ED64) for primary actions, crisp white content surfaces, dark product panels, highly legible developer typography, and modular platform sections. The result should feel modern, technical, and clean without becoming visually noisy.
 ```
+
+---
+
+## 10. Split-wise Adaptations (approved 2026-10-01)
+
+These override the sections above for this app. They exist so the design meets SPEC.md §11 (mobile and accessibility).
+
+- **Inputs:** 16px text (not 14px), so iOS Safari doesn't zoom into inputs.
+- **Tap targets:** buttons and inputs are at least 44px tall (not 40px).
+- **Primary button hover:** keeps `--mongo-black` text on `#13AA52`. White text on that green fails WCAG AA contrast.
+- **Focus ring:** a 2px `--mongo-black` outline with an offset, instead of a light-green border, so it's visible on white.
+- **Text-safe green:** add a `--green-text` token, `#00684A`, for green *text* such as "owed to you" amounts. `#00ED64` is only for fills, never text on white.
+- **Font:** Euclid Circular A is a paid, licensed font and isn't loaded. The fallback stack (`'Helvetica Neue', Helvetica, Arial, sans-serif`) is what renders. Any future web font must be self-hosted (CSP is `self`).
+- **Branding:** visual style only. The app never uses MongoDB's name or logo, and tokens use neutral names in code (`brand`, `ink`, `danger`…).
+
