@@ -1,8 +1,9 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ExpensePageSchema,
   ExpenseResponseSchema,
   type CreateExpenseRequest,
+  type UpdateExpenseRequest,
 } from '@split-wise/shared';
 import { useInvalidateMoney } from './balances';
 import { api } from './client';
@@ -52,5 +53,31 @@ export function useCreateExpense() {
     mutationFn: (body: CreateExpenseRequest) =>
       api('POST', '/expenses', { body, schema: ExpenseResponseSchema }),
     onSuccess: invalidate,
+  });
+}
+
+/** PUT with `version`; a 409 means someone else saved first (ADR-0009). */
+export function useUpdateExpense(id: number) {
+  const invalidate = useInvalidateMoney();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateExpenseRequest) =>
+      api('PUT', `/expenses/${id}`, { body, schema: ExpenseResponseSchema }),
+    onSuccess: ({ expense }) => {
+      queryClient.setQueryData(expenseKeys.detail(id), expense);
+      return invalidate();
+    },
+  });
+}
+
+export function useDeleteExpense(id: number) {
+  const invalidate = useInvalidateMoney();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api('DELETE', `/expenses/${id}`),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: expenseKeys.detail(id) });
+      return invalidate();
+    },
   });
 }

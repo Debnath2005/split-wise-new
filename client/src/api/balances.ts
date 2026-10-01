@@ -10,7 +10,7 @@ export const balanceKeys = {
   group: (groupId: number) => [...groupsKeys.detail(groupId), 'balances'] as const,
 };
 
-/** Everything a money change can affect: lists, details, balances. */
+/** Everything a money change can affect: lists, details, balances, and the activity feed. */
 export function useInvalidateMoney() {
   const queryClient = useQueryClient();
   return () =>
@@ -18,6 +18,7 @@ export function useInvalidateMoney() {
       queryClient.invalidateQueries({ queryKey: groupsKeys.all }),
       queryClient.invalidateQueries({ queryKey: friendsKeys.all }),
       queryClient.invalidateQueries({ queryKey: ['balances'] }),
+      queryClient.invalidateQueries({ queryKey: ['activity'] }),
     ]);
 }
 

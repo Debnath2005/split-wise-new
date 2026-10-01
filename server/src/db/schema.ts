@@ -1,6 +1,6 @@
 // Drizzle table definitions (SPEC §5). Tables are added milestone by milestone.
 import { sql } from 'drizzle-orm';
-import { SPLIT_TYPES } from '@split-wise/shared';
+import { ACTIVITY_TYPES, SPLIT_TYPES } from '@split-wise/shared';
 import {
   type AnySQLiteColumn,
   check,
@@ -112,20 +112,7 @@ export const groupMembers = sqliteTable(
   ],
 );
 
-export const ACTIVITY_TYPES = [
-  'expense_created',
-  'expense_updated',
-  'expense_deleted',
-  'expense_restored',
-  'settlement_created',
-  'settlement_deleted',
-  'group_created',
-  'member_added',
-  'member_left',
-  'friend_added',
-  'group_settings_changed',
-] as const;
-export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+export type { ActivityType } from '@split-wise/shared';
 
 /** SPEC §5 / ADR-0011. settlement_id is added with its table (M6). */
 export const activities = sqliteTable('activities', {

@@ -6,6 +6,8 @@ export interface TabItem {
   to: string;
   label: string;
   icon: ReactNode;
+  /** Shows a dot (e.g. unread activity). */
+  badge?: boolean;
 }
 
 /**
@@ -45,8 +47,14 @@ export function TabBar({ items, brand }: { items: TabItem[]; brand: ReactNode })
                       isActive ? 'opacity-100' : 'opacity-0',
                     )}
                   />
-                  {item.icon}
+                  <span className="relative">
+                    {item.icon}
+                    {item.badge && (
+                      <span className="absolute -top-0.5 -right-1 size-2.5 rounded-full border-2 border-board-raised bg-pink" />
+                    )}
+                  </span>
                   {item.label}
+                  {item.badge && <span className="sr-only">(new activity)</span>}
                 </>
               )}
             </NavLink>

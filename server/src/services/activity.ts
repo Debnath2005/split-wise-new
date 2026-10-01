@@ -26,8 +26,16 @@ export function recordActivity(tx: DbOrTx, input: ActivityInput): number {
     .get();
   const recipients = [...new Set(input.recipientIds)];
   if (recipients.length) {
+    // Your own actions appear in your feed but never as unread.
+    const now = Date.now();
     tx.insert(activityRecipients)
-      .values(recipients.map((userId) => ({ activityId: id, userId })))
+      .values(
+        recipients.map((userId) => ({
+          activityId: id,
+          userId,
+          readAt: userId === input.actorUserId ? now : null,
+        })),
+      )
       .run();
   }
   return id;

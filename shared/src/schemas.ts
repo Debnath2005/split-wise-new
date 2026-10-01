@@ -327,3 +327,105 @@ export const BalanceSummaryResponseSchema = z.object({
   net_paise: z.number().int(),
 });
 export type BalanceSummaryResponse = z.infer<typeof BalanceSummaryResponseSchema>;
+
+// ── Editing & activity (SPEC §9, §10) ───────────────────────────────────────
+
+/** Full replace of an expense, minus its group (fixed at creation), plus the version being edited. */
+export const UpdateExpenseRequestSchema = CreateExpenseRequestSchema.omit({ group_id: true })
+  .extend({ version: z.number().int().min(1) })
+  .strict();
+export type UpdateExpenseRequest = z.infer<typeof UpdateExpenseRequestSchema>;
+
+export const ACTIVITY_TYPES = [
+  'expense_created',
+  'expense_updated',
+  'expense_deleted',
+  'expense_restored',
+  'settlement_created',
+  'settlement_deleted',
+  'group_created',
+  'member_added',
+  'member_left',
+  'friend_added',
+  'group_settings_changed',
+] as const;
+export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+
+/** What an activity stores about an expense at one point in time (activities.payload). */
+export const ExpenseSnapshotSchema = z.object({
+  id: z.number().int(),
+  description: z.string(),
+  amount_paise: z.number().int(),
+  paid_by_user_id: z.number().int(),
+  split_type: z.enum(SPLIT_TYPES),
+  expense_date: z.string(),
+  shares: z.array(z.object({ user_id: z.number().int(), owed_paise: z.number().int() })),
+});
+export type ExpenseSnapshot = z.infer<typeof ExpenseSnapshotSchema>;
+
+const NamedRef = z.object({ id: z.number().int(), name: z.string() });
+
+/** Stored payload per activity type. */
+export const ActivityPayloadSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('expense_created'),
+    payload: z.object({ expense: ExpenseSnapshotSchema }),
+  }),
+  z.object({
+    type: z.literal('expense_restored'),
+    payload: z.object({ expense: ExpenseSnapshotSchema }),
+  }),
+  z.object({
+    type: z.literal('expense_updated'),
+    payload: z.object({ before: ExpenseSnapshotSchema, after: ExpenseSnapshotSchema }),
+  }),
+  z.object({
+    type: z.literal('expense_deleted'),
+    payload: z.object({ before: ExpenseSnapshotSchema }),
+  }),
+  z.object({ type: z.literal('friend_added'), payload: z.object({ friend: NamedRef }) }),
+  z.object({
+    type: z.literal('group_created'),
+    payload: z.object({ group: NamedRef, member_ids: z.array(z.number().int()) }),
+  }),
+  z.object({ type: z.literal('member_added'), payload: z.object({ member: NamedRef }) }),
+  z.object({ type: z.literal('member_left'), payload: z.object({ member: NamedRef }) }),
+  z.object({
+    type: z.literal('group_settings_changed'),
+    payload: z.object({
+      before: z.object({ name: z.string() }),
+      after: z.object({ name: z.string() }),
+    }),
+  }),
+  // Settlement payloads arrive with M6.
+  z.object({ type: z.literal('settlement_created'), payload: z.record(z.string(), z.unknown()) }),
+  z.object({ type: z.literal('settlement_deleted'), payload: z.record(z.string(), z.unknown()) }),
+]);
+export type ActivityPayload = z.infer<typeof ActivityPayloadSchema>;
+
+export const ActivityItemSchema = z.intersection(
+  z.object({
+    id: z.number().int(),
+    actor: PersonRefSchema,
+    group: z.object({ id: z.number().int(), name: z.string() }).nullable(),
+    expense_id: z.number().int().nullable(),
+    created_at: z.number().int(),
+    read: z.boolean(),
+    /** True only for a still-deleted expense the viewer may restore. */
+    can_restore: z.boolean(),
+  }),
+  ActivityPayloadSchema,
+);
+export type ActivityItem = z.infer<typeof ActivityItemSchema>;
+
+export const ActivityPageSchema = z.object({
+  items: z.array(ActivityItemSchema),
+  /** Names of everyone mentioned in this page's payloads (id → name), for writing sentences. */
+  people: z.record(z.string(), z.string()),
+  /** Pass as `before` for older items; null when there are no more. */
+  next_cursor: z.number().int().nullable(),
+});
+export type ActivityPage = z.infer<typeof ActivityPageSchema>;
+
+export const UnreadCountResponseSchema = z.object({ count: z.number().int() });
+export type UnreadCountResponse = z.infer<typeof UnreadCountResponseSchema>;

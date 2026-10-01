@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { AccountPage } from '../features/account/AccountPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SignupPage } from '../features/auth/SignupPage';
-import { ComingSoonPage } from '../features/comingSoon/ComingSoonPage';
+import { ActivityPage } from '../features/activity/ActivityPage';
 import { ExpenseDetailPage } from '../features/expenses/ExpenseDetailPage';
 import { FriendDetailPage } from '../features/friends/FriendDetailPage';
 import { FriendsPage } from '../features/friends/FriendsPage';
@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
           { path: '/groups', element: <GroupsPage /> },
           { path: '/groups/:groupId', element: <GroupDetailPage /> },
           { path: '/expenses/:expenseId', element: <ExpenseDetailPage /> },
-          { path: '/activity', element: <ComingSoonPage title="Activity" milestone="M5" /> },
+          { path: '/activity', element: <ActivityPage /> },
           { path: '/account', element: <AccountPage /> },
         ],
       },

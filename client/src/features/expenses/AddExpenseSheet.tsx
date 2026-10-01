@@ -1,19 +1,24 @@
 import { useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   CreateExpenseRequestSchema,
+  UpdateExpenseRequestSchema,
   ExpenseDateSchema,
   basisPointsToPercentString,
   computeSplit,
   formatPaise,
   parsePercentToBasisPoints,
   parseRupeesToPaise,
+  paiseToRupeeString,
+  type ExpenseDetail,
   type PersonRef,
   type SplitParticipant,
   type SplitResult,
   type SplitType,
 } from '@split-wise/shared';
 import { useMe } from '../../api/auth';
-import { useCreateExpense } from '../../api/expenses';
+import { ApiRequestError } from '../../api/client';
+import { expenseKeys, useCreateExpense, useUpdateExpense } from '../../api/expenses';
 import { useFriends } from '../../api/friends';
 import { useGroup, useGroups } from '../../api/groups';
 import { Alert } from '../../components/ui/Alert';
@@ -78,36 +83,85 @@ function describeSplit(
   return { tone: 'warn', text: over ? `${amount} too much` : `${amount} left to assign` };
 }
 
-function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: () => void }) {
+/** Edit-mode starting values for the per-person inputs, from the stored split input (ADR-0008). */
+function initialValues(e: ExpenseDetail): Record<number, string> {
+  const out: Record<number, string> = {};
+  for (const s of e.shares) {
+    if (s.input_value === null) continue;
+    out[s.user.id] =
+      e.split_type === 'exact'
+        ? paiseToRupeeString(s.input_value)
+        : basisPointsToPercentString(s.input_value);
+  }
+  return out;
+}
+
+function AddExpenseForm({
+  context,
+  editing,
+  onDone,
+  onConflict,
+}: {
+  context: ExpenseContext;
+  /** When set, the form edits this expense (PUT with its version) instead of creating one. */
+  editing?: ExpenseDetail;
+  onDone: () => void;
+  onConflict: (message: string) => void;
+}) {
   const { data: me } = useMe();
   const groups = useGroups();
   const friends = useFriends();
   const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense(editing?.id ?? 0);
+  const saving = createExpense.isPending || updateExpense.isPending;
 
-  const [groupId, setGroupId] = useState<number | null>(context.groupId ?? null);
+  // People on the expense being edited (payer + split), who may stay even if not your friends.
+  const onExpense: PersonRef[] = editing
+    ? [editing.paid_by, ...editing.shares.map((s) => s.user)].filter(
+        (p, i, all) => all.findIndex((q) => q.id === p.id) === i,
+      )
+    : [];
+
+  const [groupId, setGroupId] = useState<number | null>(
+    editing ? (editing.group?.id ?? null) : (context.groupId ?? null),
+  );
   const [friendIds, setFriendIds] = useState<Set<number>>(
-    () => new Set(context.friendId ? [context.friendId] : []),
+    () =>
+      new Set(editing ? onExpense.map((p) => p.id) : context.friendId ? [context.friendId] : []),
   );
   const group = useGroup(groupId ?? 0, { enabled: groupId !== null });
 
-  const [description, setDescription] = useState('');
-  const [amountText, setAmountText] = useState('');
-  const [paidBy, setPaidBy] = useState<number | null>(null);
-  const [splitType, setSplitType] = useState<SplitType>('equal');
-  const [excluded, setExcluded] = useState<Set<number>>(new Set());
-  const [values, setValues] = useState<Record<number, string>>({});
-  const [date, setDate] = useState(todayLocal());
-  const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState(editing?.description ?? '');
+  const [amountText, setAmountText] = useState(
+    editing ? paiseToRupeeString(editing.amount_paise) : '',
+  );
+  const [paidBy, setPaidBy] = useState<number | null>(editing?.paid_by.id ?? null);
+  const [splitType, setSplitType] = useState<SplitType>(editing?.split_type ?? 'equal');
+  // null = derive from the expense being edited (everyone not in its split is unticked).
+  const [excludedState, setExcluded] = useState<Set<number> | null>(editing ? null : new Set());
+  const [values, setValues] = useState<Record<number, string>>(() =>
+    editing ? initialValues(editing) : {},
+  );
+  const [date, setDate] = useState(editing?.expense_date ?? todayLocal());
+  const [notes, setNotes] = useState(editing?.notes ?? '');
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const meRef: PersonRef | null = me ? { id: me.id, name: me.name, is_placeholder: false } : null;
 
-  /** Everyone who can pay or share: the group's members, or you plus the friends you picked. */
+  /**
+   * Everyone who can pay or share: the group's members, or you plus the friends you picked
+   * (plus, when editing, anyone already on the expense).
+   */
   const picked = (friends.data ?? []).filter((f) => friendIds.has(f.id));
   const pool: PersonRef[] = groupId
     ? (group.data?.members ?? [])
-    : [...(meRef ? [meRef] : []), ...picked];
+    : [...(meRef ? [meRef] : []), ...picked, ...onExpense].filter(
+        (p, i, all) => all.findIndex((q) => q.id === p.id) === i,
+      );
+  const inSplit = new Set(editing?.shares.map((s) => s.user.id) ?? []);
+  const excluded =
+    excludedState ?? new Set(pool.filter((p) => !inSplit.has(p.id)).map((p) => p.id));
 
   const payerId = paidBy !== null && pool.some((p) => p.id === paidBy) ? paidBy : (me?.id ?? null);
   const amount = parseRupeesToPaise(amountText);
@@ -141,20 +195,14 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
   const owedBy = new Map(result?.ok ? result.shares.map((s) => [s.userId, s.owedPaise]) : []);
   const dateOk = ExpenseDateSchema.safeParse(date).success;
   const canSave =
-    !!description.trim() &&
-    amount.ok &&
-    !!result?.ok &&
-    dateOk &&
-    payerId !== null &&
-    !createExpense.isPending;
+    !!description.trim() && amount.ok && !!result?.ok && dateOk && payerId !== null && !saving;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     setFormError(null);
     if (!canSave || !amount.ok || payerId === null) return;
-    const body = CreateExpenseRequestSchema.safeParse({
-      group_id: groupId,
+    const fields = {
       description,
       amount_paise: amount.value,
       paid_by_user_id: payerId,
@@ -164,15 +212,24 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
       ),
       expense_date: date,
       notes,
-    });
-    if (!body.success) {
-      setFormError(body.error.issues[0]?.message ?? 'Some fields are invalid');
-      return;
-    }
+    };
     try {
-      await createExpense.mutateAsync(body.data);
+      if (editing) {
+        const body = UpdateExpenseRequestSchema.safeParse({ ...fields, version: editing.version });
+        if (!body.success)
+          return setFormError(body.error.issues[0]?.message ?? 'Some fields are invalid');
+        await updateExpense.mutateAsync(body.data);
+      } else {
+        const body = CreateExpenseRequestSchema.safeParse({ ...fields, group_id: groupId });
+        if (!body.success)
+          return setFormError(body.error.issues[0]?.message ?? 'Some fields are invalid');
+        await createExpense.mutateAsync(body.data);
+      }
       onDone();
     } catch (err) {
+      // Someone else saved first (ADR-0009): the sheet reloads the latest version.
+      if (err instanceof ApiRequestError && err.status === 409 && editing)
+        return onConflict(err.message);
       setFormError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
   };
@@ -193,9 +250,19 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
       <Select
         label="With"
         value={groupId ? String(groupId) : ''}
-        options={withOptions}
+        options={
+          editing?.group && !withOptions.some((o) => o.value === String(editing.group!.id))
+            ? [...withOptions, { value: String(editing.group.id), label: editing.group.name }]
+            : withOptions
+        }
+        disabled={!!editing}
         onChange={(e) => setGroupId(e.target.value ? Number(e.target.value) : null)}
       />
+      {editing && (
+        <p className="-mt-3 text-lg text-chalk-muted">
+          An expense's group can't be changed. To move it, delete it and add it again.
+        </p>
+      )}
 
       {!groupId && (
         <fieldset>
@@ -287,8 +354,8 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
                   <Checkbox
                     checked={included}
                     onChange={(on) =>
-                      setExcluded((prev) => {
-                        const next = new Set(prev);
+                      setExcluded(() => {
+                        const next = new Set(excluded);
                         if (on) next.delete(person.id);
                         else next.add(person.id);
                         return next;
@@ -368,8 +435,8 @@ function AddExpenseForm({ context, onDone }: { context: ExpenseContext; onDone: 
         >
           {status.text}
         </p>
-        <Button type="submit" fullWidth loading={createExpense.isPending} disabled={!canSave}>
-          Save expense
+        <Button type="submit" fullWidth loading={saving} disabled={!canSave}>
+          {editing ? 'Save changes' : 'Save expense'}
         </Button>
       </div>
     </form>
@@ -380,14 +447,48 @@ export function AddExpenseSheet({
   open,
   onClose,
   context = {},
+  editing,
 }: {
   open: boolean;
   onClose: () => void;
   context?: ExpenseContext;
+  /** Edit this expense instead of adding one. */
+  editing?: ExpenseDetail;
 }) {
+  const queryClient = useQueryClient();
+  const [conflict, setConflict] = useState<string | null>(null);
+  const close = () => {
+    setConflict(null);
+    onClose();
+  };
   return (
-    <Sheet open={open} onClose={onClose} title="Add expense" variant="full">
-      {open && <AddExpenseForm context={context} onDone={onClose} />}
+    <Sheet
+      open={open}
+      onClose={close}
+      title={editing ? 'Edit expense' : 'Add expense'}
+      variant="full"
+    >
+      {open && (
+        <>
+          {conflict && (
+            <div className="mb-5">
+              <Alert tone="error">{conflict}</Alert>
+            </div>
+          )}
+          {/* Keyed by version: after a conflict the refetched expense remounts a fresh form. */}
+          <AddExpenseForm
+            key={editing ? `${editing.id}:${editing.version}` : 'new'}
+            context={context}
+            editing={editing}
+            onDone={close}
+            onConflict={(message) => {
+              setConflict(message);
+              if (editing)
+                void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(editing.id) });
+            }}
+          />
+        </>
+      )}
     </Sheet>
   );
 }

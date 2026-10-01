@@ -36,6 +36,7 @@ function useInvalidateGroupsAndFriends() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: groupsKeys.all }),
       queryClient.invalidateQueries({ queryKey: friendsKeys.all }),
+      queryClient.invalidateQueries({ queryKey: ['activity'] }),
     ]);
 }
 
