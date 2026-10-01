@@ -31,6 +31,10 @@ export function useAddFriend() {
   return useMutation({
     mutationFn: (body: PersonInput) =>
       api('POST', '/friends', { body, schema: AddFriendResponseSchema }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: friendsKeys.all }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: friendsKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ]),
   });
 }

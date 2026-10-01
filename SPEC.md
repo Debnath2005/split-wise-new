@@ -274,7 +274,8 @@ Notes:
 - **Group expense**: any **current** group member may edit, delete or restore it.
 - **Non-group expense**: the payer or any participant.
 - **Settlement**: `from`, `to`, or (for group settlements) any group member may delete it.
-- **Editing**: all fields can be changed, including payer, participants, amount and split. The server recomputes shares in a transaction.
+- **Editing**: all fields except the group can be changed, including payer, participants, amount and split. The server recomputes shares in a transaction. An expense's group (or non-group) is fixed at creation; to move one, delete it and add it again. When editing a non-group expense, people already on it may stay; anyone new must be the editor's friend.
+- **Restore** is refused (409) if anyone in the expense has since left its group, so no debt with a former member comes back.
 
 ### Concurrency
 Edit requests include `version`. The server runs `UPDATE … WHERE id=? AND version=?`, and if no row changes it returns **409 CONFLICT**. The client then refetches and shows "This expense was changed by X, review and try again".
@@ -288,7 +289,7 @@ Every mutating service call writes, **in the same DB transaction**:
 - A reverse-chronological list with cursor pagination (`?before=<activity_id>&limit=30`).
 - Each item has a human sentence ("**Asha** updated *Dinner* in **Goa Trip**: amount ₹1,200 → ₹1,500") and the viewer's impact ("you owe ₹375" / "you get back ₹200"), shown in red or green.
 - Deleted-expense items get a **Restore** button (if the viewer has permission). Restoring makes an `expense_restored` activity.
-- An unread dot comes from `read_at`. Opening the feed marks all as read.
+- An unread dot comes from `read_at`. Opening the feed marks all as read. Your own actions appear in your feed but are never unread (the actor's row is written as already read).
 
 ---
 
@@ -328,7 +329,7 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 **Expenses**
 | POST | `/expenses` | `{group_id?, description, amount_paise, paid_by_user_id, split_type, participants:[{user_id, value?}], expense_date, notes?}` |
 | GET | `/expenses/:id` | with shares and split input |
-| PUT | `/expenses/:id` | full replace + `version` |
+| PUT | `/expenses/:id` | full replace + `version` (group can't change); 409 on a stale version |
 | DELETE | `/expenses/:id` | soft delete |
 | POST | `/expenses/:id/restore` | |
 
@@ -339,7 +340,8 @@ Conventions: cookie auth. Bodies are validated with shared Zod schemas. Errors u
 
 **Balances & Activity**
 | GET | `/balances/summary` | `{ owe_paise, owed_paise, net_paise }` for the dashboard |
-| GET | `/activity?before=&limit=` | feed for the current user |
+| GET | `/activity?before=&limit=&expense_id=` | feed for the current user; `expense_id` filters to one expense's history |
+| GET | `/activity/unread-count` | `{ count }` for the Activity tab dot |
 | POST | `/activity/read` | mark all read |
 
 Authorization rule (enforced in services, not routes): a user can read or modify a group's data only if they are a member, and a non-group expense only if they are its payer or a participant.

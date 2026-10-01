@@ -1,16 +1,22 @@
-import { useParams } from 'react-router';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { basisPointsToPercentString, type ExpenseDetail } from '@split-wise/shared';
 import { useMe } from '../../api/auth';
-import { useExpense } from '../../api/expenses';
+import { useExpenseHistory } from '../../api/activity';
+import { useDeleteExpense, useExpense } from '../../api/expenses';
 import { Alert } from '../../components/ui/Alert';
 import { Avatar } from '../../components/ui/Avatar';
 import { BackLink } from '../../components/ui/BackLink';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { List, ListRow } from '../../components/ui/ListRow';
 import { Money } from '../../components/ui/Money';
+import { Sheet } from '../../components/ui/Sheet';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { formatLongDate } from '../../lib/dates';
+import { ActivityRow } from '../activity/ActivityRow';
+import { AddExpenseSheet } from './AddExpenseSheet';
 import { ImpactText } from './ImpactText';
 
 const SPLIT_LABEL: Record<ExpenseDetail['split_type'], string> = {
@@ -27,9 +33,75 @@ function Back({ expense }: { expense?: ExpenseDetail }) {
   );
 }
 
+/** This expense's activity (SPEC §11.8 history), newest first. */
+function History({ expenseId, meId }: { expenseId: number; meId: number }) {
+  const history = useExpenseHistory(expenseId);
+  if (!history.data?.items.length) return null;
+  return (
+    <section>
+      <h2 className="mb-2 text-3xl/tight font-bold">History</h2>
+      <ul
+        aria-label="History"
+        className="divide-y divide-dashed divide-line overflow-hidden rounded-card border-[1.5px] border-dashed border-line-strong bg-board-raised"
+      >
+        {history.data.items.map((item) => (
+          <ActivityRow
+            key={item.id}
+            item={{ ...item, read: true }}
+            people={history.data.people}
+            meId={meId}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Confirm, soft-delete (restorable from the feed), then go back to where the expense lived. */
+function DeleteSheet({
+  expense,
+  open,
+  onClose,
+}: {
+  expense: ExpenseDetail;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const remove = useDeleteExpense(expense.id);
+  const navigate = useNavigate();
+  const back = expense.group ? `/groups/${expense.group.id}` : '/friends';
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Delete expense?"
+      footer={
+        <Button
+          fullWidth
+          loading={remove.isPending}
+          onClick={() =>
+            remove.mutate(undefined, { onSuccess: () => navigate(back, { replace: true }) })
+          }
+        >
+          Delete “{expense.description}”
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <p>
+          Balances will update for everyone in it. Anyone involved can restore it from Activity.
+        </p>
+        {remove.isError && <Alert tone="error">{remove.error.message}</Alert>}
+      </div>
+    </Sheet>
+  );
+}
+
 export function ExpenseDetailPage() {
   const id = Number(useParams().expenseId);
   const query = useExpense(id);
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { data: me } = useMe();
 
   if (query.isPending) return <PageSpinner />;
@@ -110,7 +182,18 @@ export function ExpenseDetailPage() {
             year: 'numeric',
           })}
         </p>
+
+        <History expenseId={expense.id} meId={meId} />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button onClick={() => setEditing(true)}>Edit</Button>
+          <Button variant="secondary" onClick={() => setDeleting(true)}>
+            Delete
+          </Button>
+        </div>
       </div>
+      <AddExpenseSheet open={editing} onClose={() => setEditing(false)} editing={expense} />
+      <DeleteSheet expense={expense} open={deleting} onClose={() => setDeleting(false)} />
     </>
   );
 }
