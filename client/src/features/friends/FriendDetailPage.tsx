@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import type { FriendDetailResponse } from '@split-wise/shared';
+import { UpdatePlaceholderRequestSchema, type FriendDetailResponse } from '@split-wise/shared';
 import { useRemoveFriend } from '../../api/balances';
+import { useSetPlaceholderUpi } from '../../api/settlements';
 import { useMe } from '../../api/auth';
 import { useFriendExpenses } from '../../api/expenses';
 import { useFriend } from '../../api/friends';
@@ -17,20 +18,25 @@ import { List, ListRow } from '../../components/ui/ListRow';
 import { Fab } from '../../components/ui/Fab';
 import { Money } from '../../components/ui/Money';
 import { Sheet } from '../../components/ui/Sheet';
+import { TextField } from '../../components/ui/TextField';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { AddExpenseSheet } from '../expenses/AddExpenseSheet';
 import { ExpenseList } from '../expenses/ExpenseList';
 import { contactOf } from '../people/PersonForm';
+import { SettleUpSheet, type SettleOption } from '../settle/SettleUpSheet';
 
 /** Total with this friend, then one row per group (and non-group) — SPEC §6 friend screen. */
 function BalanceCard({
   name,
   balance,
+  onSettle,
 }: {
   name: string;
   balance: FriendDetailResponse['balance'];
+  onSettle: () => void;
 }) {
   const total = balance.total_paise;
+  const anyOpen = balance.by_scope.some((s) => s.balance_paise !== 0);
   return (
     <Card title="Balance">
       <p className="text-2xl">
@@ -59,8 +65,85 @@ function BalanceCard({
           ))}
         </ul>
       )}
+      {anyOpen && (
+        <Button fullWidth className="mt-4" onClick={onSettle}>
+          Settle up
+        </Button>
+      )}
     </Card>
   );
+}
+
+/** SPEC §8: the creator of a placeholder may set its UPI ID, so it can be paid via UPI. */
+function PlaceholderUpiCard({
+  friendId,
+  name,
+  current,
+}: {
+  friendId: number;
+  name: string;
+  current: string | null;
+}) {
+  const save = useSetPlaceholderUpi(friendId);
+  const [value, setValue] = useState(current ?? '');
+  const parsed = UpdatePlaceholderRequestSchema.safeParse({ upi_vpa: value });
+  const error = parsed.success ? undefined : parsed.error.issues[0]?.message;
+  return (
+    <Card title="UPI ID">
+      <form
+        noValidate
+        className="flex flex-col gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (parsed.success) save.mutate(parsed.data.upi_vpa);
+        }}
+      >
+        <TextField
+          label={`${name}'s UPI ID`}
+          hint={`${name} hasn't joined yet, so you can add it for them.`}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="name@okicici"
+          value={value}
+          onChange={(e) => {
+            save.reset();
+            setValue(e.target.value);
+          }}
+          error={value.trim() ? error : undefined}
+        />
+        {save.isSuccess && <Alert tone="success">Saved</Alert>}
+        {save.isError && <Alert tone="error">{save.error.message}</Alert>}
+        <Button
+          type="submit"
+          variant="secondary"
+          loading={save.isPending}
+          disabled={!parsed.success || (current ?? '') === value.trim()}
+        >
+          Save UPI ID
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+/** One option per non-zero scope: positive = they pay you, negative = you pay them. */
+function settleOptions(
+  balance: FriendDetailResponse['balance'],
+  friend: { id: number; name: string; is_placeholder: boolean },
+  me: { id: number; name: string } | null | undefined,
+): SettleOption[] {
+  if (!me) return [];
+  const you = { id: me.id, name: me.name, is_placeholder: false };
+  const them = { id: friend.id, name: friend.name, is_placeholder: friend.is_placeholder };
+  return balance.by_scope
+    .filter((s) => s.balance_paise !== 0)
+    .map((s) => ({
+      from: s.balance_paise > 0 ? them : you,
+      to: s.balance_paise > 0 ? you : them,
+      amountPaise: Math.abs(s.balance_paise),
+      group: s.group,
+    }));
 }
 
 /** Confirm sheet for unfriending; explains why when the server blocks it (shared group / balance). */
@@ -115,6 +198,7 @@ export function FriendDetailPage() {
   const { data: me } = useMe();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [settling, setSettling] = useState(false);
 
   if (query.isPending) return <PageSpinner />;
   if (query.isError) {
@@ -150,7 +234,18 @@ export function FriendDetailPage() {
           )}
         </Card>
 
-        <BalanceCard name={friend.name} balance={query.data.balance} />
+        <BalanceCard
+          name={friend.name}
+          balance={query.data.balance}
+          onSettle={() => setSettling(true)}
+        />
+        {query.data.can_edit_upi_vpa && (
+          <PlaceholderUpiCard
+            friendId={friend.id}
+            name={friend.name}
+            current={query.data.upi_vpa}
+          />
+        )}
 
         <section>
           <h2 className="mb-2 text-3xl/tight font-semibold">Shared groups</h2>
@@ -184,6 +279,11 @@ export function FriendDetailPage() {
           Remove friend
         </Button>
       </div>
+      <SettleUpSheet
+        open={settling}
+        onClose={() => setSettling(false)}
+        options={settleOptions(query.data.balance, friend, me)}
+      />
       <RemoveFriendSheet
         friendId={id}
         name={friend.name}

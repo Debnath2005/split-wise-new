@@ -41,6 +41,10 @@ function mentionedIds(item: ActivityPayload): number[] {
       return [item.payload.member.id];
     case 'group_created':
       return item.payload.member_ids;
+    case 'settlement_created':
+      return [item.payload.settlement.from_user_id, item.payload.settlement.to_user_id];
+    case 'settlement_deleted':
+      return [item.payload.before.from_user_id, item.payload.before.to_user_id];
     default:
       return [];
   }
@@ -91,6 +95,7 @@ export function listActivity(
       actor: { id: r.actor.id, name: r.actor.name, is_placeholder: r.actor.isPlaceholder },
       group: r.activity.groupId ? { id: r.activity.groupId, name: r.groupName ?? '' } : null,
       expense_id: r.activity.expenseId,
+      settlement_id: r.activity.settlementId,
       created_at: r.activity.createdAt,
       read: r.readAt !== null,
       can_restore:

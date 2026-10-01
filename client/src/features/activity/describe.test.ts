@@ -15,6 +15,7 @@ const base = {
   actor: { id: 2, name: 'Ravi', is_placeholder: false },
   group: { id: 7, name: 'Goa' },
   expense_id: 5,
+  settlement_id: null,
   created_at: 0,
   read: false,
   can_restore: false,
@@ -150,5 +151,41 @@ describe('diffExpense', () => {
       ],
     };
     expect(diffExpense(dinner, after, name)).toEqual(['shares changed']);
+  });
+});
+
+describe('settlement sentences', () => {
+  const payment = {
+    id: 9,
+    from_user_id: 3,
+    to_user_id: 1,
+    amount_paise: 96600,
+    method: 'upi' as const,
+    settled_on: '2026-10-01',
+    note: null,
+  };
+
+  it('reads "Chitra paid you ₹966.00 via UPI in Goa", with no expense-style impact', () => {
+    const item: ActivityItem = {
+      ...base,
+      expense_id: null,
+      settlement_id: 9,
+      type: 'settlement_created',
+      payload: { settlement: payment },
+    };
+    expect(text(item)).toBe('Chitra paid you ₹966.00 via UPI in Goa');
+    expect(describeActivity(item, people, ME).impact).toBeNull();
+  });
+
+  it('names cash payments and deleted payments', () => {
+    const cash = { ...payment, method: 'cash' as const, from_user_id: 1, to_user_id: 2 };
+    const item: ActivityItem = {
+      ...base,
+      expense_id: null,
+      settlement_id: 9,
+      type: 'settlement_deleted',
+      payload: { before: cash },
+    };
+    expect(text(item)).toBe('Ravi deleted a payment: You paid Ravi ₹966.00 in cash in Goa');
   });
 });

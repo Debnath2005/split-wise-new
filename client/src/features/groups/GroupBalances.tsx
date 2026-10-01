@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGroupBalances } from '../../api/balances';
 import { Alert } from '../../components/ui/Alert';
 import { Avatar } from '../../components/ui/Avatar';
@@ -5,14 +6,25 @@ import { BalanceChip } from '../../components/ui/BalanceChip';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { List, ListRow } from '../../components/ui/ListRow';
 import { Money } from '../../components/ui/Money';
+import { Button } from '../../components/ui/Button';
 import { PageSpinner } from '../../components/ui/Spinner';
+import { SettleUpSheet, type SettleOption } from '../settle/SettleUpSheet';
 
 /**
  * Group Balances tab (SPEC §11.5): each member's net, then who pays whom. Numbers come straight
  * from GET /groups/:id/balances — the client only formats them. "Settle" buttons arrive in M6.
  */
-export function GroupBalances({ groupId, meId }: { groupId: number; meId: number }) {
+export function GroupBalances({
+  groupId,
+  groupName,
+  meId,
+}: {
+  groupId: number;
+  groupName: string;
+  meId: number;
+}) {
   const query = useGroupBalances(groupId);
+  const [settling, setSettling] = useState<SettleOption | null>(null);
   if (query.isPending) return <PageSpinner />;
   if (query.isError) return <Alert tone="error">{query.error.message}</Alert>;
 
@@ -39,16 +51,33 @@ export function GroupBalances({ groupId, meId }: { groupId: number; meId: number
                     </span>
                   }
                   trailing={
-                    <Money
-                      paise={t.amount_paise}
-                      className={`font-semibold ${
-                        t.from.id === meId
-                          ? 'text-negative'
-                          : t.to.id === meId
-                            ? 'text-positive'
-                            : ''
-                      }`}
-                    />
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      <Money
+                        paise={t.amount_paise}
+                        className={`font-semibold ${
+                          t.from.id === meId
+                            ? 'text-negative'
+                            : t.to.id === meId
+                              ? 'text-positive'
+                              : ''
+                        }`}
+                      />
+                      {/* SPEC §11.5: each suggested transfer gets a Settle button. */}
+                      <Button
+                        variant="secondary"
+                        aria-label={`Settle ${name(t.from)} to ${name(t.to)}`}
+                        onClick={() =>
+                          setSettling({
+                            from: t.from,
+                            to: t.to,
+                            amountPaise: t.amount_paise,
+                            group: { id: groupId, name: groupName },
+                          })
+                        }
+                      >
+                        Settle
+                      </Button>
+                    </span>
                   }
                   subtitle={involvesMe ? undefined : 'between them'}
                 />
@@ -75,6 +104,11 @@ export function GroupBalances({ groupId, meId }: { groupId: number; meId: number
           ))}
         </List>
       </section>
+      <SettleUpSheet
+        open={settling !== null}
+        onClose={() => setSettling(null)}
+        options={settling ? [settling] : []}
+      />
     </div>
   );
 }

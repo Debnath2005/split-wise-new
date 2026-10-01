@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { MAX_AMOUNT_PAISE } from './lib/money/money.js';
 import { SPLIT_TYPES } from './lib/money/split.js';
+import { UPI_VPA_REGEX } from './lib/money/upi.js';
 
 /** Error envelope for every non-2xx API response (SPEC §10). */
 export const ApiErrorSchema = z.object({
@@ -20,8 +21,8 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
 // ── Users & auth (SPEC §5, §10) ─────────────────────────────────────────────
 
-/** SPEC §8 VPA format, e.g. "ravi@okicici". */
-export const UPI_VPA_PATTERN = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/;
+/** SPEC §8 VPA format, e.g. "ravi@okicici" (one definition, in lib/money/upi). */
+export const UPI_VPA_PATTERN = UPI_VPA_REGEX;
 /** E.164, e.g. "+919876543210". */
 export const PHONE_PATTERN = /^\+[1-9]\d{7,14}$/;
 
@@ -151,6 +152,10 @@ export type GroupsResponse = z.infer<typeof GroupsResponseSchema>;
 
 export const FriendDetailResponseSchema = z.object({
   friend: PersonSchema,
+  /** Their UPI ID (friends see it anyway when paying them). */
+  upi_vpa: z.string().nullable(),
+  /** True for a placeholder you created: you may set their UPI ID (SPEC §8). */
+  can_edit_upi_vpa: z.boolean(),
   shared_groups: z.array(GroupSummarySchema),
   /** Pairwise balance with this friend (positive = they owe you), total and per scope (SPEC §6). */
   balance: z.object({
@@ -204,6 +209,10 @@ export const AddGroupMemberRequestSchema = z.union([
   PersonInputSchema,
 ]);
 export type AddGroupMemberRequest = z.infer<typeof AddGroupMemberRequestSchema>;
+
+/** How a settlement was paid (SPEC §5). The app can't verify any of them (ADR-0013). */
+export const SETTLEMENT_METHODS = ['upi', 'cash', 'other'] as const;
+export type SettlementMethod = (typeof SETTLEMENT_METHODS)[number];
 
 // ── Expenses (SPEC §4.1, §5, §10) ───────────────────────────────────────────
 
@@ -286,6 +295,7 @@ export const ExpenseResponseSchema = z.object({ expense: ExpenseDetailSchema });
 export type ExpenseResponse = z.infer<typeof ExpenseResponseSchema>;
 
 export const ExpenseListItemSchema = z.object({
+  kind: z.literal('expense'),
   id: z.number().int(),
   group: GroupRefSchema,
   description: z.string(),
@@ -298,15 +308,36 @@ export const ExpenseListItemSchema = z.object({
 });
 export type ExpenseListItem = z.infer<typeof ExpenseListItemSchema>;
 
+/** A settlement as it appears in expense lists. */
+export const SettlementListItemSchema = z.object({
+  kind: z.literal('settlement'),
+  id: z.number().int(),
+  group: GroupRefSchema,
+  from: PersonRefSchema,
+  to: PersonRefSchema,
+  amount_paise: z.number().int(),
+  method: z.enum(SETTLEMENT_METHODS),
+  note: z.string().nullable(),
+  settled_on: z.string(),
+});
+export type SettlementListItem = z.infer<typeof SettlementListItemSchema>;
+
+export const LedgerListItemSchema = z.discriminatedUnion('kind', [
+  ExpenseListItemSchema,
+  SettlementListItemSchema,
+]);
+export type LedgerListItem = z.infer<typeof LedgerListItemSchema>;
+
 export const ExpensePageSchema = z.object({
-  expenses: z.array(ExpenseListItemSchema),
+  /** Expenses and settlements, newest date first. */
+  expenses: z.array(LedgerListItemSchema),
   /** Pass as `before` to get the next (older) page; null when there are no more. */
   next_cursor: z.string().nullable(),
 });
 export type ExpensePage = z.infer<typeof ExpensePageSchema>;
 
-/** Cursor for expense lists: "<expense_date>.<id>" of the last item seen. */
-export const EXPENSE_CURSOR_PATTERN = /^\d{4}-\d{2}-\d{2}\.\d+$/;
+/** Cursor for expense lists: "<date>.<e|s>.<id>" of the last item seen (e = expense, s = settlement). */
+export const EXPENSE_CURSOR_PATTERN = /^\d{4}-\d{2}-\d{2}\.[es]\.\d+$/;
 
 // ── Balances (SPEC §6, §10) ─────────────────────────────────────────────────
 
@@ -365,6 +396,18 @@ export type ExpenseSnapshot = z.infer<typeof ExpenseSnapshotSchema>;
 
 const NamedRef = z.object({ id: z.number().int(), name: z.string() });
 
+/** What an activity stores about a settlement. */
+export const SettlementSnapshotSchema = z.object({
+  id: z.number().int(),
+  from_user_id: z.number().int(),
+  to_user_id: z.number().int(),
+  amount_paise: z.number().int(),
+  method: z.enum(SETTLEMENT_METHODS),
+  settled_on: z.string(),
+  note: z.string().nullable(),
+});
+export type SettlementSnapshot = z.infer<typeof SettlementSnapshotSchema>;
+
 /** Stored payload per activity type. */
 export const ActivityPayloadSchema = z.discriminatedUnion('type', [
   z.object({
@@ -397,9 +440,14 @@ export const ActivityPayloadSchema = z.discriminatedUnion('type', [
       after: z.object({ name: z.string() }),
     }),
   }),
-  // Settlement payloads arrive with M6.
-  z.object({ type: z.literal('settlement_created'), payload: z.record(z.string(), z.unknown()) }),
-  z.object({ type: z.literal('settlement_deleted'), payload: z.record(z.string(), z.unknown()) }),
+  z.object({
+    type: z.literal('settlement_created'),
+    payload: z.object({ settlement: SettlementSnapshotSchema }),
+  }),
+  z.object({
+    type: z.literal('settlement_deleted'),
+    payload: z.object({ before: SettlementSnapshotSchema }),
+  }),
 ]);
 export type ActivityPayload = z.infer<typeof ActivityPayloadSchema>;
 
@@ -409,6 +457,7 @@ export const ActivityItemSchema = z.intersection(
     actor: PersonRefSchema,
     group: z.object({ id: z.number().int(), name: z.string() }).nullable(),
     expense_id: z.number().int().nullable(),
+    settlement_id: z.number().int().nullable(),
     created_at: z.number().int(),
     read: z.boolean(),
     /** True only for a still-deleted expense the viewer may restore. */
@@ -429,3 +478,47 @@ export type ActivityPage = z.infer<typeof ActivityPageSchema>;
 
 export const UnreadCountResponseSchema = z.object({ count: z.number().int() });
 export type UnreadCountResponse = z.infer<typeof UnreadCountResponseSchema>;
+
+// ── Settlements (SPEC §5, §8, §10) ──────────────────────────────────────────
+
+export const CreateSettlementRequestSchema = z
+  .object({
+    /** Omit or null for a non-group settlement between friends. */
+    group_id: userId.nullable().optional(),
+    from_user_id: userId,
+    to_user_id: userId,
+    amount_paise: z
+      .number()
+      .int()
+      .min(1, 'Enter an amount')
+      .max(MAX_AMOUNT_PAISE, 'Amount is too large'),
+    method: z.enum(SETTLEMENT_METHODS),
+    note: clearable(z.string().trim().max(200, 'Keep the note under 200 characters')).optional(),
+    settled_on: ExpenseDateSchema,
+  })
+  .strict()
+  .refine((s) => s.from_user_id !== s.to_user_id, {
+    message: 'Pick two different people',
+    path: ['to_user_id'],
+  });
+export type CreateSettlementRequest = z.infer<typeof CreateSettlementRequestSchema>;
+
+export const SettlementResponseSchema = z.object({ settlement: SettlementListItemSchema });
+export type SettlementResponse = z.infer<typeof SettlementResponseSchema>;
+
+export const UpiLinkResponseSchema = z.object({
+  uri: z.string(),
+  vpa: z.string(),
+  payee_name: z.string(),
+});
+export type UpiLinkResponse = z.infer<typeof UpiLinkResponseSchema>;
+
+/** Set the UPI ID of a placeholder you created (SPEC §8). Blank clears it. */
+export const UpdatePlaceholderRequestSchema = z
+  .object({
+    upi_vpa: clearable(
+      z.string().trim().regex(UPI_VPA_PATTERN, 'Enter a valid UPI ID, e.g. name@okicici'),
+    ),
+  })
+  .strict();
+export type UpdatePlaceholderRequest = z.infer<typeof UpdatePlaceholderRequestSchema>;

@@ -101,6 +101,8 @@ export function getFriendDetail(db: Db, actorId: number, friendId: number): Frie
 
   return {
     friend: toPersonDto(friend),
+    upi_vpa: friend.upiVpa,
+    can_edit_upi_vpa: friend.isPlaceholder && friend.createdByUserId === actorId,
     shared_groups: shared.map((g) => ({ ...g, my_net_paise: nets.get(g.id) ?? 0 })),
     balance: balanceWithFriend(db, actorId, friendId),
   };

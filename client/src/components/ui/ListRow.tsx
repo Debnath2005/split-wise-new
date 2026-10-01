@@ -10,12 +10,14 @@ interface ListRowProps {
   trailing?: ReactNode;
   /** Makes the whole row a link with a chevron. */
   to?: string;
+  /** Makes the whole row a button (e.g. to open a sheet). */
+  onClick?: () => void;
 }
 
 const rowClass = 'flex min-h-16 items-center gap-3 px-4 py-2';
 
 /** One row of a list; wrap rows in <List>. */
-export function ListRow({ leading, title, subtitle, trailing, to }: ListRowProps) {
+export function ListRow({ leading, title, subtitle, trailing, to, onClick }: ListRowProps) {
   const body = (
     <>
       {leading}
@@ -28,7 +30,7 @@ export function ListRow({ leading, title, subtitle, trailing, to }: ListRowProps
         )}
       </span>
       {trailing}
-      {to && (
+      {(to || onClick) && (
         <span className="text-chalk-muted">
           <ChevronRightIcon />
         </span>
@@ -41,6 +43,14 @@ export function ListRow({ leading, title, subtitle, trailing, to }: ListRowProps
         <Link to={to} className={cx(rowClass, 'transition-colors hover:bg-chalk/5')}>
           {body}
         </Link>
+      ) : onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className={cx(rowClass, 'w-full text-left transition-colors hover:bg-chalk/5')}
+        >
+          {body}
+        </button>
       ) : (
         <div className={rowClass}>{body}</div>
       )}
