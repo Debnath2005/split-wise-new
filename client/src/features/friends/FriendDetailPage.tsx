@@ -42,15 +42,15 @@ export function FriendDetailPage() {
           <div className="flex items-center gap-4">
             <Avatar name={friend.name} placeholder={friend.is_placeholder} size="lg" />
             <div className="min-w-0">
-              <h1 className="flex items-center gap-2 text-2xl/tight font-semibold">
+              <h1 className="flex items-center gap-2 text-3xl/tight font-semibold">
                 <span className="truncate">{friend.name}</span>
                 {friend.is_placeholder && <Badge>Invited</Badge>}
               </h1>
-              <p className="truncate text-sm text-gray-dark-2">{contactOf(friend)}</p>
+              <p className="truncate text-lg text-chalk-muted">{contactOf(friend)}</p>
             </div>
           </div>
           {friend.is_placeholder && (
-            <p className="mt-4 text-sm text-gray-dark-2">
+            <p className="mt-4 text-lg text-chalk-muted">
               {friend.name} hasn't joined yet. When they sign up with this email or phone, they'll
               see everything you've shared with them.
             </p>
@@ -58,7 +58,7 @@ export function FriendDetailPage() {
         </Card>
 
         <section>
-          <h2 className="mb-2 text-xl/tight font-semibold">Shared groups</h2>
+          <h2 className="mb-2 text-3xl/tight font-semibold">Shared groups</h2>
           {groups.length === 0 ? (
             <EmptyState title="No shared groups" />
           ) : (
@@ -76,7 +76,7 @@ export function FriendDetailPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-xl/tight font-semibold">Expenses</h2>
+          <h2 className="mb-2 text-3xl/tight font-semibold">Expenses</h2>
           <ExpenseList
             query={expenses}
             meId={me?.id ?? 0}

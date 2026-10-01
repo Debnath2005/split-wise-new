@@ -20,12 +20,16 @@ export function ListRow({ leading, title, subtitle, trailing, to }: ListRowProps
     <>
       {leading}
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2 truncate font-semibold">{title}</span>
-        {subtitle && <span className="block truncate text-sm text-gray-dark-2">{subtitle}</span>}
+        <span className="flex items-center gap-2 truncate text-2xl/tight font-semibold">
+          {title}
+        </span>
+        {subtitle && (
+          <span className="block truncate text-lg/snug text-chalk-muted">{subtitle}</span>
+        )}
       </span>
       {trailing}
       {to && (
-        <span className="text-gray-dark-2">
+        <span className="text-chalk-muted">
           <ChevronRightIcon />
         </span>
       )}
@@ -34,7 +38,7 @@ export function ListRow({ leading, title, subtitle, trailing, to }: ListRowProps
   return (
     <li>
       {to ? (
-        <Link to={to} className={cx(rowClass, 'hover:bg-gray-light-3/60')}>
+        <Link to={to} className={cx(rowClass, 'transition-colors hover:bg-chalk/5')}>
           {body}
         </Link>
       ) : (
@@ -44,11 +48,12 @@ export function ListRow({ leading, title, subtitle, trailing, to }: ListRowProps
   );
 }
 
+/** Rows separated by chalk-dashed lines; rows fade and rise in, staggered. */
 export function List({ children, label }: { children: ReactNode; label?: string }) {
   return (
     <ul
       aria-label={label}
-      className="divide-y divide-gray-light-3 overflow-hidden rounded-card border border-gray-light-3 bg-white"
+      className="chalk-stagger divide-y divide-dashed divide-line overflow-hidden rounded-card border-[1.5px] border-dashed border-line-strong bg-board-raised shadow-card"
     >
       {children}
     </ul>

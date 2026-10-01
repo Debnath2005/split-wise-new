@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react';
 
-interface CardProps {
-  title?: string;
-  children: ReactNode;
-}
-
-/** DESIGN.md §4 "Card": white surface, light border, 16px radius, 24px padding. */
-export function Card({ title, children }: CardProps) {
+/** Chalk card: raised board surface, hand-drawn dashed border, subtle shadow (DESIGN.md). */
+export function Card({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <section className="rounded-card border border-gray-light-3 bg-white p-6">
-      {title && <h2 className="mb-4 text-xl/tight font-semibold">{title}</h2>}
+    <section className="animate-chalk-in rounded-card border-[1.5px] border-dashed border-line-strong bg-board-raised p-5 shadow-card">
+      {title && <h2 className="mb-4 text-3xl/tight font-bold">{title}</h2>}
       {children}
     </section>
   );

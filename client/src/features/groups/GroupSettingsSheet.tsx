@@ -84,7 +84,7 @@ function AddMemberView({ group, onDone }: { group: GroupDetail; onDone: () => vo
       {error && <Alert tone="error">{error}</Alert>}
       {candidates.length > 0 && (
         <section>
-          <h3 className="mb-2 text-sm font-semibold">Your friends</h3>
+          <h3 className="mb-2 text-lg font-semibold">Your friends</h3>
           <List label="Friends not in this group">
             {candidates.map((f) => (
               <ListRow
@@ -109,7 +109,7 @@ function AddMemberView({ group, onDone }: { group: GroupDetail; onDone: () => vo
         </section>
       )}
       <section className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold">Someone new</h3>
+        <h3 className="text-lg font-semibold">Someone new</h3>
         <PersonForm
           formId="add-member"
           submit={(values) => addMember.mutateAsync(values)}
@@ -152,7 +152,7 @@ export function GroupSettingsSheet({
           <RenameForm group={group} />
           <section>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Members ({group.members.length})</h3>
+              <h3 className="text-lg font-semibold">Members ({group.members.length})</h3>
               <Button variant="secondary" onClick={() => setView('add')}>
                 <PlusIcon />
                 Add member

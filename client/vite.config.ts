@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: true, // expose on the LAN so phones can open the dev server
     port: 5173,
-    proxy: { '/api': 'http://localhost:3000' },
+    // API_PORT lets a second dev stack run beside the default one (server PORT must match).
+    proxy: { '/api': `http://localhost:${process.env.API_PORT ?? 3000}` },
   },
 });

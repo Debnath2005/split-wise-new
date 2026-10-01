@@ -9,16 +9,16 @@ export interface TabItem {
 }
 
 /**
- * Primary navigation (SPEC §11): a fixed bottom tab bar on phones (with safe-area padding),
- * a left sidebar from 768px up.
+ * Primary navigation (SPEC §11): fixed bottom tab bar on phones (with safe-area padding),
+ * a left sidebar from 768px up. DESIGN.md: board surface, accent indicator on the active item.
  */
 export function TabBar({ items, brand }: { items: TabItem[]; brand: ReactNode }) {
   return (
     <nav
       aria-label="Main"
       className={cx(
-        'fixed inset-x-0 bottom-0 z-10 border-t border-gray-light-3 bg-white pb-[env(safe-area-inset-bottom)]',
-        'md:inset-y-0 md:right-auto md:w-56 md:border-t-0 md:border-r md:pt-6 md:pb-0',
+        'fixed inset-x-0 bottom-0 z-[100] border-t-[1.5px] border-dashed border-line-strong bg-board-raised pb-[env(safe-area-inset-bottom)]',
+        'md:inset-y-0 md:right-auto md:w-56 md:border-t-0 md:border-r-[1.5px] md:pt-6 md:pb-0',
       )}
     >
       <div className="hidden px-5 pb-6 md:block">{brand}</div>
@@ -29,22 +29,23 @@ export function TabBar({ items, brand }: { items: TabItem[]; brand: ReactNode })
               to={item.to}
               className={({ isActive }) =>
                 cx(
-                  'flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold',
-                  'md:min-h-11 md:flex-row md:justify-start md:gap-3 md:rounded-control md:px-3 md:text-sm',
-                  isActive ? 'text-ink md:bg-brand-soft' : 'text-gray-dark-2 hover:text-ink',
+                  'relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-lg',
+                  'md:min-h-11 md:flex-row md:justify-start md:gap-3 md:rounded-control md:px-3 md:text-xl',
+                  isActive ? 'font-medium text-accent' : 'text-chalk-muted hover:text-chalk',
                 )
               }
             >
               {({ isActive }) => (
                 <>
+                  {/* Accent indicator: a chalk stroke above (phone) / beside (sidebar) the active tab. */}
                   <span
+                    aria-hidden
                     className={cx(
-                      'flex h-7 w-12 items-center justify-center rounded-full md:h-auto md:w-auto',
-                      isActive && 'bg-brand-soft md:bg-transparent',
+                      'absolute top-0 h-[3px] w-10 rounded-full bg-accent transition-opacity md:top-2 md:bottom-2 md:left-0 md:h-auto md:w-[3px]',
+                      isActive ? 'opacity-100' : 'opacity-0',
                     )}
-                  >
-                    {item.icon}
-                  </span>
+                  />
+                  {item.icon}
                   {item.label}
                 </>
               )}
