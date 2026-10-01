@@ -13,6 +13,7 @@ import {
 } from './middleware/rateLimit.js';
 import { activityRouter } from './routes/activity.js';
 import { authRouter } from './routes/auth.js';
+import { invitesRouter } from './routes/invites.js';
 import { settlementsRouter } from './routes/settlements.js';
 import { usersRouter } from './routes/users.js';
 import { balancesRouter } from './routes/balances.js';
@@ -62,6 +63,7 @@ export function createApp({
   api.use(activityRouter(db));
   api.use(settlementsRouter(db));
   api.use(usersRouter(db));
+  api.use(invitesRouter(db));
   api.use((_req, res) => {
     res.status(404).json(errorBody('NOT_FOUND', 'Route not found'));
   });
